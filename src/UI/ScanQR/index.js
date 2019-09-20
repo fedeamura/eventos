@@ -9,18 +9,19 @@ import { connect } from "react-redux";
 import { push } from "connected-react-router";
 
 //Componentes
+import Webcam from "react-webcam";
+import QrcodeDecoder from 'qrcode-decoder';
+import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
-import Card from '@material-ui/core/Card';
-import Button from '@material-ui/core/Button';
-import Fab from '@material-ui/core/Fab';
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from '@Componentes/MiDialogoMensaje';
 
+
 //Icons
 import MdiIcon from '@mdi/react'
-import { mdiQrcodeScan } from '@mdi/js';
+import { mdiCameraPartyMode } from '@mdi/js';
 
 const mapStateToProps = state => {
   return {
@@ -34,64 +35,71 @@ const mapDispatchToProps = dispatch => ({
   }
 });
 
-class Inicio extends React.Component {
+class ScanQR extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      data: undefined,
-      cargando: true
+      error: undefined,
+      camaras: undefined,
+      frente: false
     };
+
+    this.webcam = React.createRef();
+    this.contenedor = React.createRef()
   }
 
   componentDidMount() {
-    this.buscarDatos();
+
+    this.init();
   }
 
-  buscarDatos = async () => {
+
+  init = async () => {
+
     try {
-      this.setState({
-        data: undefined,
-        cargando: true
+      let dispositivos = await navigator.mediaDevices.enumerateDevices();
+      let camaras = [];
+
+      dispositivos.forEach((d) => {
+        if (d.kind == 'videoinput') {
+          camaras.push(d);
+        }
       });
 
-      var db = window.firebase.firestore();
 
-      let data = await db
-        .collection("evento")
-        .where("inscriptos." + this.props.usuario.uid, "==", true)
-        .get();
+      console.log(camaras);
+      if (camaras.length == 0) {
+        throw Error('Su dispositivo no tiene ninguna camara');
+      }
 
-      let docs = data.docs.map(x => {
-        return x.data();
-      });
+      this.setState({ camaras });
 
-      this.setState({ data: docs, cargando: false });
+      this.intervalo = setInterval(async () => {
+        try {
+          this.setState({ width: this.contenedor.current.offsetWidth });
+
+          if (this.webcam && this.webcam.current) {
+            const imagen = this.webcam.current.getScreenshot();
+            const qr = new QrcodeDecoder();
+            const result = await qr.decodeFromImage(imagen);
+
+            if (result != false) {
+              clearInterval(this.intervalo);
+              let data = result.data;
+              this.props.redirect('/Inscripcion/' + data);
+            }
+          }
+        } catch (ex) {
+
+        }
+      }, 500);
+
     } catch (ex) {
-      this.setState({ cargando: false, data: undefined });
-
-      let mensaje = typeof ex === "object" ? ex.message : ex;
-      this.mostrarDialogoMensaje({
-        autoCerrar: false,
-        botonSiMensaje: 'Reintenar',
-        onBotonSiClick: () => {
-          this.setState({ cargando: true });
-          setTimeout(() => {
-            this.buscarDatos();
-          }, 400);
-        },
-        mensaje: mensaje
-      });
+      this.setState({ error: 'Error comunicándose con las cámaras del dispositivo' })
     }
-  };
-
-  onEventoClick = data => {
-    this.props.redirect("/Evento/" + data.id);
-  };
-
-  onBotonScanClick = () => {
-    this.props.redirect('/ScanQR');
   }
+
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -139,74 +147,81 @@ class Inicio extends React.Component {
 
 
   render() {
-    const { classes } = this.props;
-    const { data } = this.state;
+    const { frente, camaras, error } = this.state;
+
+    let videoConstraints;
+
+    if (frente == true) {
+      videoConstraints = {
+        width: 1280,
+        height: 720,
+        facingMode: "user"
+      };
+    } else {
+      videoConstraints = {
+        width: 1280,
+        height: 720,
+        facingMode: "environment"
+      };
+    }
 
     return (
       <MiPagina
         cargando={this.state.cargando || false}
-        toolbarLeftIconVisible={false}>
-
-        <input type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          ref={(ref) => {
-            this.filePicker = ref;
-          }}
-          onChange={this.onFile} />
+        toolbarTitulo="Escanear código QR"
+        toolbarLeftIconVisible={true}>
 
 
-        {data && data.length == 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              justifyItems: "center",
-              flexDirection: "column"
-            }}
-          >
-            <Typography variant="h5" style={{ textAlign: "center", margin: 16, marginBottom: 32, marginTop: 32 }}>
-              Escanéa alguno de los codigos QR para empezar
-          </Typography>
-
-            <Button variant="contained" color="primary" onClick={this.onBotonScanClick}>
-              Escanear
-          </Button>
-          </div>
+        {error != undefined && (
+          <Typography>{error}</Typography>
         )}
 
 
-        {data && data.length != 0 && (
-          <div>
-            {data && data.map((evento, index) => {
-              return (
-                <Card
-                  key={index}
-                  className={classes.evento}
-                  onClick={() => {
-                    this.onEventoClick(evento);
-                  }}
-                >
-                  <Typography>{evento.nombre}</Typography>
-                </Card>
-              );
-            })}
+        {error == undefined && camaras != undefined && camaras.length != 0 && (
+
+          <div ref={this.contenedor}>
+
+            <div style={{
+              width: '100%',
+
+              justifyContent: 'center',
+              display: 'flex', alignItems: 'center', alignContent: 'center'
+            }}>
+
+              <Button
+                variant="outlined"
+                size="small"
+                style={{ marginBottom: 16 }}
+                onClick={() => {
+                  this.setState({
+                    width: undefined,
+                    frente: !this.state.frente
+                  })
+                }}>
 
 
-            <Fab
-              color="primary"
-              onClick={this.onBotonScanClick}
-              style={{ position: 'absolute', right: 16, bottom: 16 }}>
+                <MdiIcon path={mdiCameraPartyMode}
+                  title="Cambiar cámara"
+                  size={1}
+                  style={{ marginRight: 8 }}
+                  color="black"
+                />
+                Cambiar cámara</Button>
+            </div>
 
-              <MdiIcon path={mdiQrcodeScan}
-                title="Escanear código QR"
-                size={1}
-                color="white"
-              />
+            {this.state.width && (
+              <React.Fragment>
 
-            </Fab>
+                <Webcam
+                  videoConstraints={videoConstraints}
+                  ref={this.webcam}
+                  width={this.state.width}
+                  audio={false}
+                />
 
+                <Typography style={{ textAlign: 'center' }}>Apunte al código QR</Typography>
+              </React.Fragment>
+            )}
           </div>
         )}
 
@@ -229,11 +244,9 @@ class Inicio extends React.Component {
       </MiPagina>
     );
   }
-
-
 }
 
-let componente = Inicio;
+let componente = ScanQR;
 componente = withStyles(styles)(componente);
 componente = connect(
   mapStateToProps,

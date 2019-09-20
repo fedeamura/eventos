@@ -57,7 +57,7 @@ class DialogoMensaje extends React.PureComponent {
 
           <DialogTitle>{this.props.titulo || ""}</DialogTitle>
           <DialogContent>
-            <Grid container spacing={16}>
+            <Grid container spacing={2}>
               <Grid item xs={12}>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   {this.props.icon && (

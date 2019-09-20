@@ -10,10 +10,12 @@ import { push } from "connected-react-router";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
+import Button from "@material-ui/core/Button";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import { CircularProgress, Button } from "@material-ui/core";
+import DialogoMensaje from '@Componentes/MiDialogoMensaje';
+
 
 const mapStateToProps = state => {
   return {
@@ -43,12 +45,46 @@ class Inscripcion extends React.Component {
 
   buscarDatos = async () => {
     try {
-      var db = window.firebase.firestore();
 
-      this.setState({ cargando: true, error: undefined });
+      this.setState({ cargando: true });
+
+      var db = window.firebase.firestore();
+      const codigo = this.state.codigo;
+      if (codigo == undefined || codigo == '' || codigo.split('_').length != 2) {
+        this.setState({ cargando: false });
+        this.mostrarDialogoMensaje({
+          autoCerrar: false,
+          mensaje: 'El còdigo QR escaneado es inválido',
+          botonSiMensaje: 'Volver',
+          onBotonSiClick: () => {
+            this.props.redirect('/')
+          }
+        });
+        return;
+      }
 
       let idEvento = this.state.codigo.split("_")[0];
       let idActividad = this.state.codigo.split("_")[1];
+
+      let docActividad = db
+        .collection('evento')
+        .doc(idEvento)
+        .collection('actividad')
+        .doc(idActividad)
+        .get();
+
+      if (docActividad.exists == false) {
+        this.setState({ cargando: false });
+        this.mostrarDialogoMensaje({
+          autoCerrar: false,
+          mensaje: 'El còdigo QR escaneado es inválido',
+          botonSiMensaje: 'Volver',
+          onBotonSiClick: () => {
+            this.props.redirect('/')
+          }
+        });
+        return;
+      }
 
       await db
         .collection("evento")
@@ -68,10 +104,26 @@ class Inscripcion extends React.Component {
         .doc(idEvento)
         .update({ ["inscriptos." + this.props.usuario.uid]: true });
 
-      this.setState({ cargando: false });
+      this.setState({ cargando: false, data: true });
     } catch (ex) {
-      let mensaje = typeof ex === "object" ? ex.message : ex;
-      this.setState({ error: mensaje, cargando: false });
+      this.setState({ cargando: false });
+
+      this.mostrarDialogoMensaje({
+        autoCerrar: false,
+        mensaje: 'Error procesando la solicitud',
+        botonNoVisible: true,
+        botonNoMensaje: 'Volver',
+        onBotonNoClick: () => {
+          this.props.redirect('/')
+        },
+        botonSiMensaje: 'Reintentar',
+        onBotonSiClick: () => {
+          this.setState({ cargando: true });
+          setTimeout(() => {
+            this.buscarDatos();
+          }, 300);
+        }
+      });
     }
   };
 
@@ -81,46 +133,89 @@ class Inscripcion extends React.Component {
     this.props.redirect("/Actividad/" + idEvento + "/" + idActividad);
   };
 
+  //Dialogo mensaje
+  mostrarDialogoMensaje = comando => {
+    this.setState({
+      dialogoMensajeVisible: true,
+      dialogoMensajeTitulo: comando.titulo || "",
+      dialogoMensajeMensaje: comando.mensaje || "",
+      dialogoMensajeBotonSiVisible: comando.botonSiVisible != undefined ? comando.botonSiVisible : true,
+      dialogoMensajeBotonSiMensaje: comando.botonSiMensaje || "Aceptar",
+      dialogoMensajeBotonSiClick: comando.onBotonSiClick,
+      dialogoMensajeBotonNoVisible: comando.botonNoVisible != undefined ? comando.botonNoVisible : false,
+      dialogoMensajeBotonNoMensaje: comando.botonNoMensaje || "Cancelar",
+      dialogoMensajeBotonNoClick: comando.onBotonNoClick,
+      dialogoMensajeAutoCerrar: comando.autoCerrar != undefined ? comando.autoCerrar : true
+    });
+  };
+
+  onDialogoMensajeClose = () => {
+    if (this.state.dialogoMensajeAutoCerrar != true) return;
+    this.setState({ dialogoMensajeVisible: false });
+  };
+
+  onDialogoMensajeBotonSiClick = () => {
+    if (this.state.dialogoMensajeBotonSiClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
+    }
+    let resultado = this.state.dialogoMensajeBotonSiClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
+
+  onDialogoMensajeBotonNoClick = () => {
+    if (this.state.dialogoMensajeBotonNoClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
+    }
+
+    let resultado = this.state.dialogoMensajeBotonNoClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
+
   render() {
+    const { cargando, data } = this.state;
+
     return (
-      <MiPagina toolbarTitulo="Inscripción a una actividad" toolbarLeftIconVisible={false}>
-        {this.state.cargando == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
+      <MiPagina
+        cargando={cargando || false}
+        toolbarTitulo="Inscripción a una actividad"
+        toolbarLeftIconVisible={false}>
 
-        {this.state.cargando == false && (
-          <React.Fragment>
-            {this.state.error && <React.Fragment>{this.renderError()}</React.Fragment>}
 
-            {this.state.error == undefined && <React.Fragment>{this.renderData()}</React.Fragment>}
-          </React.Fragment>
+        {data && (
+          <div style={{ padding: 16, display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+            <Typography style={{ textAlign: "center", marginBottom: 16 }} variant="h5">
+              Te inscribiste con éxito en la actividad
+            </Typography>
+            <Typography style={{ textAlign: "center", marginBottom: 32 }}>Además, ya estas participando en un sorteo</Typography>
+
+            <Button onClick={this.onBotonActividadClick} size="small" variant="contained" color="primary">
+              Ver actividad
+            </Button>
+          </div>
         )}
+
+        <DialogoMensaje
+          visible={this.state.dialogoMensajeVisible || false}
+          titulo={this.state.dialogoMensajeTitulo || ""}
+          mensaje={this.state.dialogoMensajeMensaje || ""}
+          onClose={this.onDialogoMensajeClose}
+          botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
+          textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
+          onBotonSiClick={this.onDialogoMensajeBotonSiClick}
+          autoCerrarBotonSi={false}
+          botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
+          textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
+          onBotonNoClick={this.onDialogoMensajeBotonNoClick}
+          autoCerrarBotonNo={false}
+        />
+
       </MiPagina>
-    );
-  }
-
-  renderCargando() {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-        <CircularProgress />
-      </div>
-    );
-  }
-
-  renderError() {
-    return <Typography>{this.state.error}</Typography>;
-  }
-
-  renderData() {
-    return (
-      <div style={{ padding: 16, display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-        <Typography style={{ textAlign: "center", marginBottom: 16 }} variant="h5">
-          Te inscribiste con éxito en la actividad
-        </Typography>
-        <Typography style={{ textAlign: "center", marginBottom: 32 }}>Además, ya estas participando en un sorteo</Typography>
-
-        <Button onClick={this.onBotonActividadClick} size="small" variant="contained" color="primary">
-          Ver actividad
-        </Button>
-      </div>
     );
   }
 }

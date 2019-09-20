@@ -10,11 +10,14 @@ import { push } from "connected-react-router";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
+import Card from "@material-ui/core/Card";
+
+//Colores
+import green from "@material-ui/core/colors/green";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import { Card, CircularProgress } from "@material-ui/core";
-import { green } from "@material-ui/core/colors";
+import DialogoMensaje from '@Componentes/MiDialogoMensaje';
 
 const mapStateToProps = state => {
   return {
@@ -36,7 +39,6 @@ class Actividad extends React.Component {
       idEvento: props.match.params.idEvento,
       idActividad: props.match.params.idActividad,
       data: undefined,
-      error: undefined,
       cargando: true
     };
   }
@@ -47,7 +49,7 @@ class Actividad extends React.Component {
 
   buscarInfo = async () => {
     try {
-      this.setState({ cargando: true, error: undefined });
+      this.setState({ cargando: true, dialogoMensajeVisible: false });
 
       var db = window.firebase.firestore();
 
@@ -60,15 +62,41 @@ class Actividad extends React.Component {
         .onSnapshot(doc => {
           let data = doc.data();
           if (data == undefined) {
-            this.setState({ data: undefined, cargando: false });
+            this.setState({ cargando: false });
+            this.mostrarDialogoMensaje({
+              autoCerrar: false,
+              mensaje: 'La actividad indicada no existe',
+              botonSiMensaje: 'Volver',
+              onBotonSiClick: () => {
+                this.props.redirect('/Evento/' + this.state.idEvento);
+              }
+            });
             return;
           }
 
           this.setState({ data, cargando: false });
         });
     } catch (ex) {
-      let mensaje = typeof ex === "object" ? ex.message : ex;
-      this.setState({ error: mensaje, cargando: false });
+      this.setState({ cargando: false });
+
+      this.mostrarDialogoMensaje({
+        autoCerrar: false,
+        mensaje: 'Ocurrió un error. Por favor intente nuevamente',
+        botonNoVisible: true,
+        botonNoMensaje: 'Volver',
+        onBotonNoClick: () => {
+          setTimeout(() => {
+            this.props.redirect('/Evento/' + this.state.idEvento);
+          }, 300)
+        },
+        botonSiMensaje: 'Reintentar',
+        onBotonSiClick: () => {
+          this.setState({ cargando: true });
+          setTimeout(() => {
+            this.buscarInfo();
+          }, 300)
+        }
+      });
     }
   };
 
@@ -76,74 +104,104 @@ class Actividad extends React.Component {
     this.unsubscribe && this.unsubscribe();
   }
 
+  //Dialogo mensaje
+  mostrarDialogoMensaje = comando => {
+    this.setState({
+      dialogoMensajeVisible: true,
+      dialogoMensajeTitulo: comando.titulo || "",
+      dialogoMensajeMensaje: comando.mensaje || "",
+      dialogoMensajeBotonSiVisible: comando.botonSiVisible != undefined ? comando.botonSiVisible : true,
+      dialogoMensajeBotonSiMensaje: comando.botonSiMensaje || "Aceptar",
+      dialogoMensajeBotonSiClick: comando.onBotonSiClick,
+      dialogoMensajeBotonNoVisible: comando.botonNoVisible != undefined ? comando.botonNoVisible : false,
+      dialogoMensajeBotonNoMensaje: comando.botonNoMensaje || "Cancelar",
+      dialogoMensajeBotonNoClick: comando.onBotonNoClick,
+      dialogoMensajeAutoCerrar: comando.autoCerrar != undefined ? comando.autoCerrar : true
+    });
+  };
+
+  onDialogoMensajeClose = () => {
+    if (this.state.dialogoMensajeAutoCerrar != true) return;
+    this.setState({ dialogoMensajeVisible: false });
+  };
+
+  onDialogoMensajeBotonSiClick = () => {
+    if (this.state.dialogoMensajeBotonSiClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
+    }
+    let resultado = this.state.dialogoMensajeBotonSiClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
+
+  onDialogoMensajeBotonNoClick = () => {
+    if (this.state.dialogoMensajeBotonNoClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
+    }
+
+    let resultado = this.state.dialogoMensajeBotonNoClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
+
+
   render() {
+    const { cargando, data } = this.state;
+    const { usuario } = this.props;
+
     return (
-      <MiPagina toolbarTitulo="Actividad" toolbarLeftIconVisible={true}>
-        {/* cargando */}
-        {this.state.cargando == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
+      <MiPagina
+        cargando={cargando || false}
+        toolbarTitulo="Actividad" toolbarLeftIconVisible={true}>
 
-        {this.state.cargando == false && (
+
+        {data && (
           <React.Fragment>
-            {/* Error  */}
-            {this.state.error && <React.Fragment>{this.renderError()}</React.Fragment>}
+            {data.ganadorSorteo && data.ganadorSorteo.uid == usuario.uid && (
+              <Card style={{
+                borderRadius: 16,
+                padding: 16,
+                backgroundColor: green["500"],
+                marginBottom: 32
+              }}>
+                <Typography variant="body1" style={{ color: "white" }}>
+                  ¡Ganaste el sorteo!
+            </Typography>
+                <Typography variant="body2" style={{ color: "white" }}>
+                  Mostrá esta pantalla a algun disertante del evento para recibir tu premio
+            </Typography>
+              </Card>
+            )}
 
-            {/* data  */}
-            {this.state.error == undefined && <React.Fragment>{this.renderData()}</React.Fragment>}
+            <Typography variant="h5">{data.nombre}</Typography>
+            <Typography variant="body2">{data.descripcion}</Typography>
           </React.Fragment>
         )}
+
+
+        <DialogoMensaje
+          visible={this.state.dialogoMensajeVisible || false}
+          titulo={this.state.dialogoMensajeTitulo || ""}
+          mensaje={this.state.dialogoMensajeMensaje || ""}
+          onClose={this.onDialogoMensajeClose}
+          botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
+          textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
+          onBotonSiClick={this.onDialogoMensajeBotonSiClick}
+          autoCerrarBotonSi={false}
+          botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
+          textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
+          onBotonNoClick={this.onDialogoMensajeBotonNoClick}
+          autoCerrarBotonNo={false}
+        />
+
       </MiPagina>
     );
   }
 
-  renderCargando() {
-    return (
-      <div
-        style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center"
-        }}
-      >
-        <CircularProgress />
-      </div>
-    );
-  }
-
-  renderError() {
-    return <Typography>{this.state.error}</Typography>;
-  }
-
-  renderData() {
-    const { data } = this.state;
-    const { usuario } = this.props;
-
-    if (data == undefined) {
-      return (
-        <React.Fragment>
-          <Typography>La actividad indicada no existe</Typography>
-        </React.Fragment>
-      );
-    }
-
-    return (
-      <React.Fragment>
-        {data.ganadorSorteo && data.ganadorSorteo.uid == usuario.uid && (
-          <Card style={{ padding: 8, backgroundColor: green["500"], marginBottom: 32 }}>
-            <Typography variant="body1" style={{ color: "white" }}>
-              ¡Ganaste el sorteo!
-            </Typography>
-            <Typography variant="body2" style={{ color: "white" }}>
-              Mostrá esta pantalla a algun disertante del evento para recibir tu premio
-            </Typography>
-          </Card>
-        )}
-
-        <Typography variant="h5">{data.nombre}</Typography>
-        <Typography variant="body2">{data.descripcion}</Typography>
-      </React.Fragment>
-    );
-  }
 }
 
 let componente = Actividad;

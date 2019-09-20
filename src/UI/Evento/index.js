@@ -11,9 +11,16 @@ import { push } from "connected-react-router";
 //Componentes
 import Typography from "@material-ui/core/Typography";
 
+//componentes
+import Card from '@material-ui/core/Card';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemText from '@material-ui/core/ListItemText';
+import List from '@material-ui/core/List';
+
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import { Card, CircularProgress, ListItem, ListItemText, List, ListItemSecondaryAction, Checkbox } from "@material-ui/core";
+import DialogoMensaje from '@Componentes/MiDialogoMensaje';
+
 
 const mapStateToProps = state => {
   return {
@@ -34,7 +41,6 @@ class Evento extends React.Component {
     this.state = {
       id: props.match.params.id,
       data: undefined,
-      error: undefined,
       cargando: true
     };
   }
@@ -45,7 +51,7 @@ class Evento extends React.Component {
 
   buscarInfo = async () => {
     try {
-      this.setState({ cargando: true, error: undefined });
+      this.setState({ cargando: true, data: undefined });
 
       var db = window.firebase.firestore();
       let refEvento = db.collection("evento").doc(this.state.id);
@@ -53,14 +59,50 @@ class Evento extends React.Component {
       let doc = await refEvento.get();
       let data = doc.data();
       if (data == undefined) {
-        this.setState({ data: undefined, cargando: false });
+        this.setState({ cargando: false });
+        this.mostrarDialogoMensaje({
+          autoCerrar: false,
+          mensaje: 'El evento indicado no existe.',
+          botonNoVisible: true,
+          botonNoMensaje: 'Volver',
+          onBotonNoClick: () => {
+            setTimeout(() => {
+              this.props.redirect('/');
+            }, 300)
+          },
+          botonSiMensaje: 'Reintentar',
+          onBotonSiClick: () => {
+            this.setState({ cargando: true });
+            setTimeout(() => {
+              this.buscarInfo();
+            }, 300)
+          }
+        })
         return;
       }
 
       this.setState({ data, cargando: false });
     } catch (ex) {
-      let mensaje = typeof ex === "object" ? ex.message : ex;
-      this.setState({ error: mensaje, cargando: false });
+      this.setState({ cargando: false });
+
+      this.mostrarDialogoMensaje({
+        autoCerrar: false,
+        mensaje: 'Ocurrió un error. Por favor intente nuevamente',
+        botonNoVisible: true,
+        botonNoMensaje: 'Volver',
+        onBotonNoClick: () => {
+          setTimeout(() => {
+            this.props.redirect('/');
+          }, 300)
+        },
+        botonSiMensaje: 'Reintentar',
+        onBotonSiClick: () => {
+          this.setState({ cargando: true });
+          setTimeout(() => {
+            this.buscarInfo();
+          }, 300)
+        }
+      })
     }
   };
 
@@ -68,81 +110,101 @@ class Evento extends React.Component {
     this.props.redirect("/Actividad/" + this.state.id + "/" + a.id);
   };
 
-  render() {
-    return (
-      <MiPagina toolbarTitulo="Evento" toolbarLeftIconVisible={true}>
-        {/* cargando */}
-        {this.state.cargando == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
+  //Dialogo mensaje
+  mostrarDialogoMensaje = comando => {
+    this.setState({
+      dialogoMensajeVisible: true,
+      dialogoMensajeTitulo: comando.titulo || "",
+      dialogoMensajeMensaje: comando.mensaje || "",
+      dialogoMensajeBotonSiVisible: comando.botonSiVisible != undefined ? comando.botonSiVisible : true,
+      dialogoMensajeBotonSiMensaje: comando.botonSiMensaje || "Aceptar",
+      dialogoMensajeBotonSiClick: comando.onBotonSiClick,
+      dialogoMensajeBotonNoVisible: comando.botonNoVisible != undefined ? comando.botonNoVisible : false,
+      dialogoMensajeBotonNoMensaje: comando.botonNoMensaje || "Cancelar",
+      dialogoMensajeBotonNoClick: comando.onBotonNoClick,
+      dialogoMensajeAutoCerrar: comando.autoCerrar != undefined ? comando.autoCerrar : true
+    });
+  };
 
-        {this.state.cargando == false && (
-          <React.Fragment>
-            {/* Error  */}
-            {this.state.error && <React.Fragment>{this.renderError()}</React.Fragment>}
+  onDialogoMensajeClose = () => {
+    if (this.state.dialogoMensajeAutoCerrar != true) return;
+    this.setState({ dialogoMensajeVisible: false });
+  };
 
-            {/* data  */}
-            {this.state.error == undefined && <React.Fragment>{this.renderData()}</React.Fragment>}
-          </React.Fragment>
-        )}
-      </MiPagina>
-    );
-  }
+  onDialogoMensajeBotonSiClick = () => {
+    if (this.state.dialogoMensajeBotonSiClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
+    }
+    let resultado = this.state.dialogoMensajeBotonSiClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
 
-  renderCargando() {
-    return (
-      <div
-        style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center"
-        }}
-      >
-        <CircularProgress />
-      </div>
-    );
-  }
-
-  renderError() {
-    return <Typography>{this.state.error}</Typography>;
-  }
-
-  renderData() {
-    const { data } = this.state;
-
-    if (data == undefined) {
-      return (
-        <React.Fragment>
-          <Typography>El evento indicado no existe</Typography>
-        </React.Fragment>
-      );
+  onDialogoMensajeBotonNoClick = () => {
+    if (this.state.dialogoMensajeBotonNoClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
     }
 
-    return (
-      <React.Fragment>
-        <Typography variant="h5">{data.nombre}</Typography>
-        <Typography variant="body2">{data.descripcion}</Typography>
+    let resultado = this.state.dialogoMensajeBotonNoClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
 
-        <Card style={{ marginTop: 16 }}>
-          <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">
-            Actividades
-          </Typography>
-          <List>
-            {(data.actividades || []).map((a, index) => {
-              return (
-                <ListItem
-                  key={index}
-                  button
-                  onClick={() => {
-                    this.onActividadClick(a);
-                  }}
-                >
-                  <ListItemText primary={a.nombre}></ListItemText>
-                </ListItem>
-              );
-            })}
-          </List>
-        </Card>
-      </React.Fragment>
+
+  render() {
+    const { data } = this.state;
+
+    return (
+      <MiPagina
+        cargando={this.state.cargando || false}
+        toolbarTitulo="Evento" toolbarLeftIconVisible={true}>
+
+        {data && (
+          <React.Fragment>
+            <Typography variant="h5">{data.nombre}</Typography>
+            <Typography variant="body2">{data.descripcion}</Typography>
+
+            <Card style={{ marginTop: 16, borderRadius: 16 }}>
+              <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">Actividades</Typography>
+              <List>
+                {(data.actividades || []).map((a, index) => {
+                  return (
+                    <ListItem
+                      key={index}
+                      button
+                      onClick={() => {
+                        this.onActividadClick(a);
+                      }}
+                    >
+                      <ListItemText primary={a.nombre}></ListItemText>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </Card>
+          </React.Fragment>
+        )}
+
+        <DialogoMensaje
+          visible={this.state.dialogoMensajeVisible || false}
+          titulo={this.state.dialogoMensajeTitulo || ""}
+          mensaje={this.state.dialogoMensajeMensaje || ""}
+          onClose={this.onDialogoMensajeClose}
+          botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
+          textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
+          onBotonSiClick={this.onDialogoMensajeBotonSiClick}
+          autoCerrarBotonSi={false}
+          botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
+          textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
+          onBotonNoClick={this.onDialogoMensajeBotonNoClick}
+          autoCerrarBotonNo={false}
+        />
+
+      </MiPagina>
     );
   }
 }
