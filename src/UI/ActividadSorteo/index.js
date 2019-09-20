@@ -98,11 +98,7 @@ class ActividadSorteo extends React.Component {
         return;
       }
 
-      var min = 0;
-      var max = data.length - 1;
-      var random = Math.floor(Math.random() * (+max - +min)) + +min;
-
-      let ganador = data[random];
+      var ganador = data[Math.floor(Math.random() * data.length)];
 
       await db
         .collection("evento")

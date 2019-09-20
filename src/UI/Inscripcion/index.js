@@ -63,8 +63,8 @@ class Inscripcion extends React.Component {
         return;
       }
 
-      let idEvento = this.state.codigo.split("_")[0];
-      let idActividad = this.state.codigo.split("_")[1];
+      let idEvento = this.state.codigo.split("_")[0].toLowerCase();
+      let idActividad = this.state.codigo.split("_")[1].toLowerCase();
 
       let docActividad = db
         .collection('evento')
@@ -106,6 +106,7 @@ class Inscripcion extends React.Component {
 
       this.setState({ cargando: false, data: true });
     } catch (ex) {
+      console.log(ex);
       this.setState({ cargando: false });
 
       this.mostrarDialogoMensaje({
