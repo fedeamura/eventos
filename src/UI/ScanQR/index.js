@@ -153,14 +153,14 @@ class ScanQR extends React.Component {
 
     if (frente == true) {
       videoConstraints = {
-        width: 1280,
-        height: 720,
+        // width: 1280,
+        // height: 720,
         facingMode: "user"
       };
     } else {
       videoConstraints = {
-        width: 1280,
-        height: 720,
+        // width: 1280,
+        // height: 720,
         facingMode: "environment"
       };
     }
