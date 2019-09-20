@@ -14,6 +14,10 @@ import { AnimatedSwitch } from "react-router-transition";
 //REDUX
 import { connect } from "react-redux";
 import { login, cerrarSesion } from "@Redux/Actions/usuario";
+import { setData, setCargando, setReady } from "@Redux/Actions/data";
+
+//Componentes
+import _ from 'lodash';
 
 //Mis componentes
 import PanelLogin from "@UI/_PanelLogin";
@@ -31,7 +35,7 @@ const Pagina404 = asyncComponent(() => import("@UI/_Pagina404"));
 //Redux
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
   };
 };
 
@@ -41,6 +45,15 @@ const mapDispatchToProps = dispatch => ({
   },
   cerrarSesion: () => {
     dispatch(cerrarSesion());
+  },
+  setData: (data) => {
+    dispatch(setData(data));
+  },
+  setReady: (data) => {
+    dispatch(setReady(data));
+  },
+  setCargando: (data) => {
+    dispatch(setCargando(data));
   }
 });
 
@@ -57,8 +70,10 @@ class App extends React.Component {
     this.unsubscribeFirebaseAuth = window.firebase.auth().onAuthStateChanged(user => {
       if (user) {
         this.props.login(this.convertirFirebaseUser(user));
+        this.onLogin();
       } else {
         this.props.cerrarSesion();
+        this.onLogout();
       }
 
       this.setState({ cargandoUsuario: false });
@@ -67,6 +82,114 @@ class App extends React.Component {
 
   componentWillUnmount() {
     this.unsubscribeFirebaseAuth && this.unsubscribeFirebaseAuth();
+    this.listenerDataEventos && this.listenerDataEventos();
+    this.listenerDataUsuario && this.listenerDataUsuario();
+  }
+
+  onLogin = () => {
+    const db = window.firebase.firestore();
+    this.listenerDataEventos && this.listenerDataEventos();
+    this.listenerDataUsuario && this.listenerDataUsuario();
+
+    this.props.setCargando(true);
+    this.listenerDataEventos = db.collection('info').doc('eventos').onSnapshot((doc) => {
+      if (!doc.exists) {
+        console.log('Eventos', {});
+        this.props.setReady(true);
+        this.props.setCargando(false);
+        this.props.setData({});
+        return;
+      }
+
+      let data = doc.data();
+      if (data == undefined) {
+        console.log('Eventos', {});
+        this.props.setReady(true);
+        this.props.setCargando(false);
+        this.props.setData({});
+        return;
+      }
+
+      //Obtengo los eventos
+      let map = data.info || {};
+      let eventos = Object.keys(map).map((key) => {
+        let data = map[key];
+
+        //Formateo las actividades
+        let actividades = [];
+        Object.keys(data.actividades || {}).map((key) => {
+          let actividad = (data.actividades || {})[key];
+          actividades.push(actividad);
+        });
+
+        data.actividades = actividades;
+        return data;
+      });
+
+
+
+      const { usuario } = this.props;
+      //Obtengo la info del usuario
+      this.listenerDataUsuario && this.listenerDataUsuario();
+      this.listenerDataUsuario = db
+        .collection('info')
+        .doc('inscripciones')
+        .collection('porUsuario')
+        .doc(usuario.uid)
+        .onSnapshot((docUsuario) => {
+          //La info del usuario no existe
+          if (!docUsuario.exists) {
+            console.log('Eventos', eventos);
+            this.props.setReady(true);
+            this.props.setCargando(false);
+            this.props.setData({
+              eventos,
+            });
+            return;
+          }
+
+          //La info del usuario no existe
+          let dataUsuario = docUsuario.data();
+          if (dataUsuario == undefined) {
+            console.log('Eventos', eventos);
+            this.props.setReady(true);
+            this.props.setCargando(false);
+            this.props.setData({
+              eventos,
+            });
+            return;
+          }
+
+          //Proceso la info del usuario
+          Object.keys(dataUsuario).forEach((keyEvento) => {
+            let inscripcionEvento = dataUsuario[keyEvento];
+            let evento = _.find(eventos, (x) => x.id == keyEvento);
+            if (evento && inscripcionEvento && Object.keys(inscripcionEvento).length != 0) {
+              evento.inscripto = true;
+
+              Object.keys(inscripcionEvento).forEach((keyActividad) => {
+                let actividades = evento.actividades || [];
+                let actividad = _.find(actividades, (x) => x.id == keyActividad);
+                if (actividad) {
+                  actividad.inscripto = true;
+                }
+              });
+            }
+          });
+
+          console.log('Eventos', eventos);
+          this.props.setReady(true);
+          this.props.setCargando(false);
+          this.props.setData({
+            eventos,
+          });
+        });
+    });
+  }
+
+  onLogout = () => {
+    this.listenerDataEventos && this.listenerDataEventos();
+    this.listenerDataUsuario && this.listenerDataUsuario();
   }
 
   convertirFirebaseUser = user => {

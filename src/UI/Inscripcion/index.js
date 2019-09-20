@@ -11,15 +11,18 @@ import { push } from "connected-react-router";
 //Componentes
 import Typography from "@material-ui/core/Typography";
 import Button from "@material-ui/core/Button";
+import _ from 'lodash';
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from '@Componentes/MiDialogoMensaje';
 
-
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
+    data: state.Data.data,
+    dataReady: state.Data.ready,
+    dataCargando: state.Data.cargando
   };
 };
 
@@ -40,10 +43,18 @@ class Inscripcion extends React.Component {
   }
 
   componentDidMount() {
-    this.buscarDatos();
+    if (this.props.dataReady == true) {
+      this.inscribir();
+    }
   }
 
-  buscarDatos = async () => {
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.dataReady == true && this.props.dataReady == false) {
+      this.inscribir();
+    }
+  }
+
+  inscribir = async () => {
     try {
 
       this.setState({ cargando: true });
@@ -54,10 +65,12 @@ class Inscripcion extends React.Component {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({
           autoCerrar: false,
-          mensaje: 'El còdigo QR escaneado es inválido',
+          mensaje: 'El código QR escaneado es inválido',
           botonSiMensaje: 'Volver',
           onBotonSiClick: () => {
-            this.props.redirect('/')
+            setTimeout(() => {
+              this.props.redirect('/')
+            }, 300);
           }
         });
         return;
@@ -66,43 +79,59 @@ class Inscripcion extends React.Component {
       let idEvento = this.state.codigo.split("_")[0].toLowerCase();
       let idActividad = this.state.codigo.split("_")[1].toLowerCase();
 
-      let docActividad = db
-        .collection('evento')
-        .doc(idEvento)
-        .collection('actividad')
-        .doc(idActividad)
-        .get();
+      const { data, usuario } = this.props;
 
-      if (docActividad.exists == false) {
+      //Busco el evento
+      let eventos = data.eventos || [];
+      let evento = _.find(eventos, (x) => x.id == idEvento);
+
+      //El evento no existe
+      if (evento == undefined) {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({
           autoCerrar: false,
-          mensaje: 'El còdigo QR escaneado es inválido',
+          mensaje: 'El código QR escaneado es inválido',
           botonSiMensaje: 'Volver',
           onBotonSiClick: () => {
-            this.props.redirect('/')
+            setTimeout(() => {
+              this.props.redirect('/')
+            }, 300);
           }
         });
         return;
       }
 
-      await db
-        .collection("evento")
-        .doc(idEvento)
-        .collection("actividad")
-        .doc(idActividad)
-        .collection("inscripto")
-        .doc(this.props.usuario.uid)
-        .set({
-          uid: this.props.usuario.uid,
-          nombre: this.props.usuario.nombre,
-          photoURL: this.props.usuario.photoURL
-        });
+      //Busco la actividad
+      let actividades = evento.actividades || [];
+      let actividad = _.find(actividades, (x) => x.id == idActividad);
 
-      await db
-        .collection("evento")
-        .doc(idEvento)
-        .update({ ["inscriptos." + this.props.usuario.uid]: true });
+      //La activdad no existe
+      if (actividad == undefined) {
+        this.setState({ cargando: false });
+        this.mostrarDialogoMensaje({
+          autoCerrar: false,
+          mensaje: 'El código QR escaneado es inválido',
+          botonSiMensaje: 'Volver',
+          onBotonSiClick: () => {
+            setTimeout(() => {
+              this.props.redirect('/')
+            }, 300);
+          }
+        });
+        return;
+      }
+
+      //Inscribo
+      await db.collection('info').doc('inscripciones').collection('porUsuario').doc(usuario.uid).set({
+        usuario: {
+          nombre: usuario.nombre,
+          photoURL: usuario.photoURL,
+          uid: usuario.uid,
+        },
+        [evento.id]: {
+          [actividad.id]: true
+        },
+      }, { merge: true })
 
       this.setState({ cargando: false, data: true });
     } catch (ex) {
@@ -115,7 +144,9 @@ class Inscripcion extends React.Component {
         botonNoVisible: true,
         botonNoMensaje: 'Volver',
         onBotonNoClick: () => {
-          this.props.redirect('/')
+          setTimeout(() => {
+            this.props.redirect('/')
+          }, 300);
         },
         botonSiMensaje: 'Reintentar',
         onBotonSiClick: () => {
