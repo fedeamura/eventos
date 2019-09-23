@@ -10,14 +10,26 @@ import { push } from "connected-react-router";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
+import memoize from 'memoize-one';
+import _ from 'lodash';
+
+//componentes
+import Card from '@material-ui/core/Card';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemText from '@material-ui/core/ListItemText';
+import List from '@material-ui/core/List';
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
+import Checkbox from '@material-ui/core/Checkbox';
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import { Card, CircularProgress, ListItem, ListItemText, List, ListItemSecondaryAction, Checkbox } from "@material-ui/core";
 
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
+    data: state.Data.data,
+    dataCargando: state.Data.cargando,
+    dataReady: state.Data.ready
   };
 };
 
@@ -33,116 +45,85 @@ class Evento extends React.Component {
 
     this.state = {
       id: props.match.params.id,
-      data: undefined,
-      error: undefined,
-      cargando: true
     };
   }
 
-  componentDidMount() {
-    this.buscarInfo();
-  }
-
-  buscarInfo = async () => {
-    try {
-      this.setState({ cargando: true, error: undefined });
-
-      var db = window.firebase.firestore();
-      let refEvento = db.collection("evento").doc(this.state.id);
-
-      let doc = await refEvento.get();
-      let data = doc.data();
-      if (data == undefined) {
-        this.setState({ data: undefined, cargando: false });
-        return;
-      }
-
-      this.setState({ data, cargando: false });
-    } catch (ex) {
-      let mensaje = typeof ex === "object" ? ex.message : ex;
-      this.setState({ error: mensaje, cargando: false });
+  componentWillReceiveProps(nextProps) {
+    let id = nextProps.match.params.id;
+    if (id != this.state.id) {
+      this.setState({ id });
     }
-  };
+  }
 
   onActividadClick = a => {
     this.props.redirect("/Actividad/" + this.state.id + "/" + a.id);
   };
 
+  getEvento = memoize((data, id) => {
+    data = data || {};
+    let eventos = data.eventos || [];
+    return _.find(eventos, (x) => x.id == id);
+  })
+
   render() {
+    const { data, dataCargando, dataReady } = this.props;
+    const { id } = this.state;
+
+    let evento = this.getEvento(data, id);
+
     return (
-      <MiPagina toolbarTitulo="Evento" toolbarLeftIconVisible={true}>
-        {/* cargando */}
-        {this.state.cargando == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
+      <MiPagina
+        cargando={dataCargando || false}
+        toolbarTitulo="Evento" toolbarLeftIconVisible={true}>
 
-        {this.state.cargando == false && (
+        {/* Cargue los eventos  */}
+        {dataReady && (
           <React.Fragment>
-            {/* Error  */}
-            {this.state.error && <React.Fragment>{this.renderError()}</React.Fragment>}
 
-            {/* data  */}
-            {this.state.error == undefined && <React.Fragment>{this.renderData()}</React.Fragment>}
+            {/* Evento no existente  */}
+            {evento == undefined && (
+              <Typography>No existe</Typography>
+            )}
+
+            {/* Evento existente */}
+            {evento && (
+              <React.Fragment>
+                <Typography variant="h5">{evento.nombre}</Typography>
+                <Typography variant="body2">{evento.descripcion}</Typography>
+
+                {/* Actividades  */}
+                {evento.actividades && Object.keys(evento.actividades).length != 0 && (
+                  <Card style={{ marginTop: 16, borderRadius: 16 }}>
+                    <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">Actividades</Typography>
+                    <List>
+                      {Object.keys(evento.actividades || {}).map((key) => {
+                        let actividad = (evento.actividades || {})[key];
+
+                        return (
+                          <ListItem
+                            key={key}
+                            button
+                            onClick={() => {
+                              this.onActividadClick(actividad);
+                            }}
+                          >
+                            <ListItemText primary={actividad.nombre}></ListItemText>
+                            <ListItemSecondaryAction>
+                              <Checkbox checked={actividad.inscripto == true} />
+                            </ListItemSecondaryAction>
+                          </ListItem>
+                        );
+                      })}
+                    </List>
+                  </Card>
+                )}
+
+              </React.Fragment>
+            )}
           </React.Fragment>
         )}
+
       </MiPagina>
-    );
-  }
-
-  renderCargando() {
-    return (
-      <div
-        style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center"
-        }}
-      >
-        <CircularProgress />
-      </div>
-    );
-  }
-
-  renderError() {
-    return <Typography>{this.state.error}</Typography>;
-  }
-
-  renderData() {
-    const { data } = this.state;
-
-    if (data == undefined) {
-      return (
-        <React.Fragment>
-          <Typography>El evento indicado no existe</Typography>
-        </React.Fragment>
-      );
-    }
-
-    return (
-      <React.Fragment>
-        <Typography variant="h5">{data.nombre}</Typography>
-        <Typography variant="body2">{data.descripcion}</Typography>
-
-        <Card style={{ marginTop: 16 }}>
-          <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">
-            Actividades
-          </Typography>
-          <List>
-            {(data.actividades || []).map((a, index) => {
-              return (
-                <ListItem
-                  key={index}
-                  button
-                  onClick={() => {
-                    this.onActividadClick(a);
-                  }}
-                >
-                  <ListItemText primary={a.nombre}></ListItemText>
-                </ListItem>
-              );
-            })}
-          </List>
-        </Card>
-      </React.Fragment>
     );
   }
 }

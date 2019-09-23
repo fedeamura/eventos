@@ -8,28 +8,34 @@ import "react-virtualized/styles.css";
 
 //Router
 import { withRouter } from "react-router-dom";
-import { Route, Switch } from "react-router-dom";
+import { Route } from "react-router-dom";
 import { AnimatedSwitch } from "react-router-transition";
 
 //REDUX
 import { connect } from "react-redux";
 import { login, cerrarSesion } from "@Redux/Actions/usuario";
+import { setData, setCargando, setReady } from "@Redux/Actions/data";
+
+//Componentes
+import _ from 'lodash';
 
 //Mis componentes
 import PanelLogin from "@UI/_PanelLogin";
 import asyncComponent from "./AsyncComponent";
-import { CircularProgress, Typography } from "@material-ui/core";
+import CircularProgress from "@material-ui/core/CircularProgress";
+
 const Inicio = asyncComponent(() => import("@UI/Inicio"));
 const Inscripcion = asyncComponent(() => import("@UI/Inscripcion"));
 const Evento = asyncComponent(() => import("@UI/Evento"));
 const Actividad = asyncComponent(() => import("@UI/Actividad"));
 const ActividadSorteo = asyncComponent(() => import("@UI/ActividadSorteo"));
+const ScanQR = asyncComponent(() => import("@UI/ScanQR"));
 const Pagina404 = asyncComponent(() => import("@UI/_Pagina404"));
 
 //Redux
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
   };
 };
 
@@ -39,6 +45,15 @@ const mapDispatchToProps = dispatch => ({
   },
   cerrarSesion: () => {
     dispatch(cerrarSesion());
+  },
+  setData: (data) => {
+    dispatch(setData(data));
+  },
+  setReady: (data) => {
+    dispatch(setReady(data));
+  },
+  setCargando: (data) => {
+    dispatch(setCargando(data));
   }
 });
 
@@ -52,19 +67,13 @@ class App extends React.Component {
   }
 
   componentDidMount() {
-    let user = window.firebase.auth().currentUser;
-    if (user) {
-      this.props.login(this.convertirFirebaseUser(user));
-    } else {
-      this.props.cerrarSesion();
-    }
-
     this.unsubscribeFirebaseAuth = window.firebase.auth().onAuthStateChanged(user => {
-      console.log("Usuario change", user);
       if (user) {
         this.props.login(this.convertirFirebaseUser(user));
+        this.onLogin();
       } else {
         this.props.cerrarSesion();
+        this.onLogout();
       }
 
       this.setState({ cargandoUsuario: false });
@@ -73,6 +82,114 @@ class App extends React.Component {
 
   componentWillUnmount() {
     this.unsubscribeFirebaseAuth && this.unsubscribeFirebaseAuth();
+    this.listenerDataEventos && this.listenerDataEventos();
+    this.listenerDataUsuario && this.listenerDataUsuario();
+  }
+
+  onLogin = () => {
+    const db = window.firebase.firestore();
+    this.listenerDataEventos && this.listenerDataEventos();
+    this.listenerDataUsuario && this.listenerDataUsuario();
+
+    this.props.setCargando(true);
+    this.listenerDataEventos = db.collection('info').doc('eventos').onSnapshot((doc) => {
+      if (!doc.exists) {
+        console.log('Eventos', {});
+        this.props.setReady(true);
+        this.props.setCargando(false);
+        this.props.setData({});
+        return;
+      }
+
+      let data = doc.data();
+      if (data == undefined) {
+        console.log('Eventos', {});
+        this.props.setReady(true);
+        this.props.setCargando(false);
+        this.props.setData({});
+        return;
+      }
+
+      //Obtengo los eventos
+      let map = data.info || {};
+      let eventos = Object.keys(map).map((key) => {
+        let data = map[key];
+
+        //Formateo las actividades
+        let actividades = [];
+        Object.keys(data.actividades || {}).map((key) => {
+          let actividad = (data.actividades || {})[key];
+          actividades.push(actividad);
+        });
+
+        data.actividades = actividades;
+        return data;
+      });
+
+
+
+      const { usuario } = this.props;
+      //Obtengo la info del usuario
+      this.listenerDataUsuario && this.listenerDataUsuario();
+      this.listenerDataUsuario = db
+        .collection('info')
+        .doc('inscripciones')
+        .collection('porUsuario')
+        .doc(usuario.uid)
+        .onSnapshot((docUsuario) => {
+          //La info del usuario no existe
+          if (!docUsuario.exists) {
+            console.log('Eventos', eventos);
+            this.props.setReady(true);
+            this.props.setCargando(false);
+            this.props.setData({
+              eventos,
+            });
+            return;
+          }
+
+          //La info del usuario no existe
+          let dataUsuario = docUsuario.data();
+          if (dataUsuario == undefined) {
+            console.log('Eventos', eventos);
+            this.props.setReady(true);
+            this.props.setCargando(false);
+            this.props.setData({
+              eventos,
+            });
+            return;
+          }
+
+          //Proceso la info del usuario
+          Object.keys(dataUsuario).forEach((keyEvento) => {
+            let inscripcionEvento = dataUsuario[keyEvento];
+            let evento = _.find(eventos, (x) => x.id == keyEvento);
+            if (evento && inscripcionEvento && Object.keys(inscripcionEvento).length != 0) {
+              evento.inscripto = true;
+
+              Object.keys(inscripcionEvento).forEach((keyActividad) => {
+                let actividades = evento.actividades || [];
+                let actividad = _.find(actividades, (x) => x.id == keyActividad);
+                if (actividad) {
+                  actividad.inscripto = true;
+                }
+              });
+            }
+          });
+
+          console.log('Eventos', eventos);
+          this.props.setReady(true);
+          this.props.setCargando(false);
+          this.props.setData({
+            eventos,
+          });
+        });
+    });
+  }
+
+  onLogout = () => {
+    this.listenerDataEventos && this.listenerDataEventos();
+    this.listenerDataUsuario && this.listenerDataUsuario();
   }
 
   convertirFirebaseUser = user => {
@@ -85,41 +202,52 @@ class App extends React.Component {
     };
   };
 
-  revalidateUser() {
-    let firebaseUser = window.firebase.auth().currentUser;
-    let reduxUser = this.props.usuario;
+  // revalidateUser() {
+  //   let firebaseUser = window.firebase.auth().currentUser;
+  //   let reduxUser = this.props.usuario;
 
-    if ((firebaseUser == undefined) != (reduxUser == undefined)) {
-      if (firebaseUser) {
-        this.props.login(this.convertirFirebaseUser(firebaseUser));
-      } else {
-        this.props.cerrarSesion();
-      }
-    }
-  }
+  //   if ((firebaseUser == undefined) != (reduxUser == undefined)) {
+  //     if (firebaseUser) {
+  //       this.props.login(this.convertirFirebaseUser(firebaseUser));
+  //     } else {
+  //       this.props.cerrarSesion();
+  //     }
+  //   }
+  // }
 
   render() {
     const { classes } = this.props;
-    this.revalidateUser();
+    // this.revalidateUser();
 
     return (
       <div className={classes.root}>
         <CssBaseline />
+
         {this.state.cargandoUsuario == true && (
-          <div className={classes.contenedorCargandoUsuario}>
-            <CircularProgress />
-          </div>
+          <React.Fragment>{this.renderCargando()}</React.Fragment>
         )}
 
         {this.state.cargandoUsuario == false && (
           <React.Fragment>
             {this.props.usuario == undefined && <PanelLogin />}
 
-            {this.props.usuario && <React.Fragment>{this.renderContent()}</React.Fragment>}
+            {this.props.usuario != undefined && (
+              <React.Fragment>{this.renderContent()}</React.Fragment>
+            )}
+
           </React.Fragment>
         )}
+
       </div>
     );
+  }
+
+  renderCargando() {
+    const { classes } = this.props;
+
+    return <div className={classes.contenedorCargandoUsuario}>
+      <CircularProgress />
+    </div>
   }
 
   renderContent() {
@@ -127,53 +255,48 @@ class App extends React.Component {
     let base = "";
     return (
       <main className={classes.content}>
-        {/* <Switch> */}
+
         <AnimatedSwitch atEnter={{ opacity: 0 }} atLeave={{ opacity: 0 }} atActive={{ opacity: 1 }} className={"switch-wrapper"}>
           <Route
             exact
-            location={this.props.location}
-            key={Math.random()}
             path={`${base}/`}
-            render={({ location, match }) => <Inicio key={this.props.location.key} match={match} />}
+            component={Inicio}
           />
 
           <Route
             exact
-            location={this.props.location}
-            key={Math.random()}
             path={`${base}/Inscripcion/:codigo`}
-            render={({ location, match }) => <Inscripcion key={this.props.location.key} match={match} />}
+            component={Inscripcion}
           />
 
           <Route
             exact
-            location={this.props.location}
-            key={Math.random()}
+            path={`${base}/ScanQR`}
+            component={ScanQR}
+          />
+
+          <Route
+            exact
             path={`${base}/Evento/:id`}
-            render={({ location, match }) => <Evento key={this.props.location.key} match={match} />}
+            component={Evento}
           />
 
           <Route
             exact
-            location={this.props.location}
-            key={Math.random()}
             path={`${base}/Actividad/:idEvento/:idActividad`}
-            render={({ location, match }) => <Actividad key={this.props.location.key} match={match} />}
+            component={Actividad}
           />
+
           <Route
             exact
-            location={this.props.location}
-            key={Math.random()}
             path={`${base}/ActividadSorteo/:idEvento/:idActividad`}
-            render={({ location, match }) => <ActividadSorteo key={this.props.location.key} match={match} />}
+            component={ActividadSorteo}
           />
-          {/* <Route
-            // key={this.props.location.key}
-            location={this.props.location}
-            render={({ location, match }) => <Pagina404 key={this.props.location.key} match={match} />}
-          /> */}
+
+          <Route
+            component={Pagina404}
+          />
         </AnimatedSwitch>
-        {/* </Switch> */}
       </main>
     );
   }

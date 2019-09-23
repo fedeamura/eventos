@@ -10,15 +10,22 @@ import { push } from "connected-react-router";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
+import Card from "@material-ui/core/Card";
+import memoize from 'memoize-one';
+import _ from 'lodash';
+
+//Colores
+import green from "@material-ui/core/colors/green";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import { Card, CircularProgress } from "@material-ui/core";
-import { green } from "@material-ui/core/colors";
 
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
+    data: state.Data.data,
+    dataReady: state.Data.ready,
+    dataCargando: state.Data.cargando
   };
 };
 
@@ -34,116 +41,99 @@ class Actividad extends React.Component {
 
     this.state = {
       idEvento: props.match.params.idEvento,
-      idActividad: props.match.params.idActividad,
-      data: undefined,
-      error: undefined,
-      cargando: true
+      idActividad: props.match.params.idActividad
     };
   }
 
-  componentDidMount() {
-    this.buscarInfo();
-  }
-
-  buscarInfo = async () => {
-    try {
-      this.setState({ cargando: true, error: undefined });
-
-      var db = window.firebase.firestore();
-
-      this.unsubscribe && this.unsubscribe();
-      this.unsubscribe = await db
-        .collection("evento")
-        .doc(this.state.idEvento)
-        .collection("actividad")
-        .doc(this.state.idActividad)
-        .onSnapshot(doc => {
-          let data = doc.data();
-          if (data == undefined) {
-            this.setState({ data: undefined, cargando: false });
-            return;
-          }
-
-          this.setState({ data, cargando: false });
-        });
-    } catch (ex) {
-      let mensaje = typeof ex === "object" ? ex.message : ex;
-      this.setState({ error: mensaje, cargando: false });
+  componentWillReceiveProps(nextProps) {
+    let idEvento = nextProps.match.params.idEvento;
+    let idActividad = nextProps.match.params.idActividad;
+    if (idEvento != this.state.idEvento) {
+      this.setState({ idEvento });
     }
-  };
 
-  componentWillUnmount() {
-    this.unsubscribe && this.unsubscribe();
+    if (idActividad != this.state.idActividad) {
+      this.setState({ idActividad });
+    }
   }
+
+  getActividad = memoize((data, idEvento, idActividad) => {
+    data = data || {};
+    let eventos = data.eventos || [];
+    let evento = _.find(eventos, (x) => x.id == idEvento);
+    if (evento == undefined) return undefined;
+
+    let actividades = evento.actividades || [];
+    return _.find(actividades, (x) => x.id == idActividad);
+  });
 
   render() {
+    const { usuario, data, dataCargando, dataReady } = this.props;
+    const { idEvento, idActividad } = this.state;
+
+    let actividad = this.getActividad(data, idEvento, idActividad);
+
     return (
-      <MiPagina toolbarTitulo="Actividad" toolbarLeftIconVisible={true}>
-        {/* cargando */}
-        {this.state.cargando == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
+      <MiPagina
+        cargando={dataCargando || false}
+        toolbarTitulo="Actividad" toolbarLeftIconVisible={true}>
 
-        {this.state.cargando == false && (
+        {dataReady == true && (
           <React.Fragment>
-            {/* Error  */}
-            {this.state.error && <React.Fragment>{this.renderError()}</React.Fragment>}
 
-            {/* data  */}
-            {this.state.error == undefined && <React.Fragment>{this.renderData()}</React.Fragment>}
+
+            {/* La actividad no existe */}
+            {actividad == undefined && (
+              <Typography>La actividad no existe </Typography>
+            )}
+
+            {/* La actividad existe */}
+            {actividad && (
+              <React.Fragment>
+
+                {/* Ganador de la actividad */}
+                {actividad.ganadorSorteo && actividad.ganadorSorteo.uid == usuario.uid && (
+                  <Card style={{
+                    borderRadius: 16,
+                    padding: 16,
+                    backgroundColor: green["500"],
+                    marginBottom: 32
+                  }}>
+                    <Typography variant="body1" style={{ color: "white" }}>
+                      ¡Ganaste el sorteo!
+                    </Typography>
+                    <Typography variant="body2" style={{ color: "white" }}>
+                      Mostrá esta pantalla a algun disertante del evento para recibir tu premio
+                    </Typography>
+                  </Card>
+                )}
+
+                {/* Info de la actividad */}
+                <Typography variant="h5">{actividad.nombre}</Typography>
+                <Typography variant="body2">{actividad.descripcion}</Typography>
+
+
+                {/* Inscripto  */}
+                <div style={{ marginTop: 16 }} />
+
+                {actividad.inscripto == true && (
+                  <Typography>Te inscribiste a esta actividad</Typography>
+                )}
+
+                {actividad.inscripto != true && (
+                  <Typography>No estás inscripto en esta actividad</Typography>
+                )}
+
+              </React.Fragment>
+            )}
+
           </React.Fragment>
         )}
+
       </MiPagina>
     );
   }
 
-  renderCargando() {
-    return (
-      <div
-        style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center"
-        }}
-      >
-        <CircularProgress />
-      </div>
-    );
-  }
-
-  renderError() {
-    return <Typography>{this.state.error}</Typography>;
-  }
-
-  renderData() {
-    const { data } = this.state;
-    const { usuario } = this.props;
-
-    if (data == undefined) {
-      return (
-        <React.Fragment>
-          <Typography>La actividad indicada no existe</Typography>
-        </React.Fragment>
-      );
-    }
-
-    return (
-      <React.Fragment>
-        {data.ganadorSorteo && data.ganadorSorteo.uid == usuario.uid && (
-          <Card style={{ padding: 8, backgroundColor: green["500"], marginBottom: 32 }}>
-            <Typography variant="body1" style={{ color: "white" }}>
-              ¡Ganaste el sorteo!
-            </Typography>
-            <Typography variant="body2" style={{ color: "white" }}>
-              Mostrá esta pantalla a algun disertante del evento para recibir tu premio
-            </Typography>
-          </Card>
-        )}
-
-        <Typography variant="h5">{data.nombre}</Typography>
-        <Typography variant="body2">{data.descripcion}</Typography>
-      </React.Fragment>
-    );
-  }
 }
 
 let componente = Actividad;

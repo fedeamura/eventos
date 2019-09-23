@@ -10,15 +10,21 @@ import { push } from "connected-react-router";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
+import Card from "@material-ui/core/Card";
+import Button from "@material-ui/core/Button";
+import memoize from 'memoize-one';
+import _ from 'lodash';
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import { Card, CircularProgress, ListItem, ListItemText, List, Avatar, ListItemAvatar, Button } from "@material-ui/core";
-import { green } from "@material-ui/core/colors";
+import DialogoMensaje from '@Componentes/MiDialogoMensaje';
 
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
+    data: state.Data.data,
+    dataReady: state.Data.ready,
+    dataCargando: state.Data.cargando
   };
 };
 
@@ -35,81 +41,52 @@ class ActividadSorteo extends React.Component {
     this.state = {
       idEvento: props.match.params.idEvento,
       idActividad: props.match.params.idActividad,
-      data: undefined,
-      error: undefined,
-      cargando: true
+      cargando: false
     };
   }
 
-  componentDidMount() {
-    this.buscarInfo();
-  }
-
-  componentWillUnmount() {
-    this.unsubscribe && this.unsubscribe();
-  }
-
-  buscarInfo = async () => {
-    try {
-      this.setState({ cargando: true, error: undefined });
-
-      var db = window.firebase.firestore();
-
-      this.unsubscribe && this.unsubscribe();
-      this.unsubscribe = await db
-        .collection("evento")
-        .doc(this.state.idEvento)
-        .collection("actividad")
-        .doc(this.state.idActividad)
-        .onSnapshot(doc => {
-          let data = doc.data();
-          if (data == undefined) {
-            this.setState({ data: undefined, cargando: false });
-            return;
-          }
-
-          this.setState({ data, cargando: false });
-        });
-    } catch (ex) {
-      let mensaje = typeof ex === "object" ? ex.message : ex;
-      this.setState({ error: mensaje, cargando: false });
+  componentWillReceiveProps(nextProps) {
+    let idEvento = nextProps.match.params.idEvento;
+    let idActividad = nextProps.match.params.idActividad;
+    if (idEvento != this.state.idEvento) {
+      this.setState({ idEvento });
     }
-  };
+
+    if (idActividad != this.state.idActividad) {
+      this.setState({ idActividad });
+    }
+  }
 
   onSorteoClick = async () => {
     try {
+      const { idEvento, idActividad } = this.state;
+
       this.setState({ cargando: true });
 
       var db = window.firebase.firestore();
 
       let doc = await db
-        .collection("evento")
-        .doc(this.state.idEvento)
-        .collection("actividad")
-        .doc(this.state.idActividad)
-        .collection("inscripto")
-        .get();
+        .collection('info')
+        .doc('inscripciones')
+        .collection('porUsuario')
+        .where(idEvento + '.' + idActividad, '==', true).get()
 
       let data = doc.docs.map(x => {
-        return x.data();
+        return x.data().usuario;
       });
       if (data.length == 0) {
         this.setState({ cargando: false });
         return;
       }
 
-      var min = 0;
-      var max = data.length - 1;
-      var random = Math.floor(Math.random() * (+max - +min)) + +min;
-
-      let ganador = data[random];
-
+      var ganador = data[Math.floor(Math.random() * data.length)];
       await db
-        .collection("evento")
-        .doc(this.state.idEvento)
-        .collection("actividad")
-        .doc(this.state.idActividad)
-        .update({ ganadorSorteo: { uid: ganador.uid, nombre: ganador.nombre, photoURL: ganador.photoURL } });
+        .collection("info")
+        .doc('eventos')
+        .update({
+          [`info.${idEvento}.actividades.${idActividad}.ganadorSorteo`]: { uid: ganador.uid, nombre: ganador.nombre, photoURL: ganador.photoURL }
+        });
+
       this.setState({ cargando: false });
     } catch (ex) {
       let mensaje = typeof ex === "object" ? ex.message : ex;
@@ -117,90 +94,130 @@ class ActividadSorteo extends React.Component {
     }
   };
 
-  render() {
-    return (
-      <MiPagina toolbarTitulo="Sorteo" toolbarLeftIconVisible={true}>
-        {/* cargando */}
-        {this.state.cargando == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
+  getActividad = memoize((data, idEvento, idActividad) => {
+    data = data || {};
+    let eventos = data.eventos || [];
+    let evento = _.find(eventos, (x) => x.id == idEvento);
+    if (evento == undefined) return undefined;
 
-        {this.state.cargando == false && (
-          <React.Fragment>
-            {/* Error  */}
-            {this.state.error && <React.Fragment>{this.renderError()}</React.Fragment>}
+    let actividades = evento.actividades || [];
+    return _.find(actividades, (x) => x.id == idActividad);
+  });
 
-            {/* data  */}
-            {this.state.error == undefined && <React.Fragment>{this.renderData()}</React.Fragment>}
-          </React.Fragment>
-        )}
-      </MiPagina>
-    );
-  }
+  //Dialogo mensaje
+  mostrarDialogoMensaje = comando => {
+    this.setState({
+      dialogoMensajeVisible: true,
+      dialogoMensajeTitulo: comando.titulo || "",
+      dialogoMensajeMensaje: comando.mensaje || "",
+      dialogoMensajeBotonSiVisible: comando.botonSiVisible != undefined ? comando.botonSiVisible : true,
+      dialogoMensajeBotonSiMensaje: comando.botonSiMensaje || "Aceptar",
+      dialogoMensajeBotonSiClick: comando.onBotonSiClick,
+      dialogoMensajeBotonNoVisible: comando.botonNoVisible != undefined ? comando.botonNoVisible : false,
+      dialogoMensajeBotonNoMensaje: comando.botonNoMensaje || "Cancelar",
+      dialogoMensajeBotonNoClick: comando.onBotonNoClick,
+      dialogoMensajeAutoCerrar: comando.autoCerrar != undefined ? comando.autoCerrar : true
+    });
+  };
 
-  renderCargando() {
-    return (
-      <div
-        style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center"
-        }}
-      >
-        <CircularProgress />
-      </div>
-    );
-  }
+  onDialogoMensajeClose = () => {
+    if (this.state.dialogoMensajeAutoCerrar != true) return;
+    this.setState({ dialogoMensajeVisible: false });
+  };
 
-  renderError() {
-    return <Typography>{this.state.error}</Typography>;
-  }
+  onDialogoMensajeBotonSiClick = () => {
+    if (this.state.dialogoMensajeBotonSiClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
+    }
+    let resultado = this.state.dialogoMensajeBotonSiClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
 
-  renderData() {
-    const { data } = this.state;
-    const { usuario } = this.props;
-
-    if (data == undefined) {
-      return (
-        <React.Fragment>
-          <Typography>La actividad indicada no existe</Typography>
-        </React.Fragment>
-      );
+  onDialogoMensajeBotonNoClick = () => {
+    if (this.state.dialogoMensajeBotonNoClick == undefined) {
+      this.setState({ dialogoMensajeVisible: false });
+      return;
     }
 
+    let resultado = this.state.dialogoMensajeBotonNoClick();
+    if (resultado != false) {
+      this.setState({ dialogoMensajeVisible: false });
+    }
+  };
+
+
+
+  render() {
+    const { idEvento, idActividad, cargando } = this.state;
+    const { data, dataCargando, dataReady } = this.props;
+
+    let actividad = this.getActividad(data, idEvento, idActividad);
+
     return (
-      <React.Fragment>
-        <Typography variant="h5">{data.nombre}</Typography>
-        <Typography variant="body2">{data.descripcion}</Typography>
+      <MiPagina
+        cargando={dataCargando || false}
+        toolbarTitulo="Sorteo" toolbarLeftIconVisible={true}>
 
-        <Card style={{ padding: 8, marginTop: 16 }}>
-          <Typography variant="subtitle2">Ganador del sorteo</Typography>
-          {data.ganadorSorteo == undefined && <Typography>Aun nadie</Typography>}
-          {data.ganadorSorteo && <Typography>{data.ganadorSorteo.nombre}</Typography>}
-        </Card>
-        <Button onClick={this.onSorteoClick} style={{ marginTop: 16 }} variant="contained" color="primary">
-          Realizar sorteo
-        </Button>
+        {/* Info lista */}
+        {dataReady == true && (
 
-        {/* <Card style={{ marginTop: 16 }}>
-          <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">
-            Inscriptos
-          </Typography>
-          <List>
-            {Object.keys(data.inscriptos || {}).map((key, index) => {
-              let inscripto = data.inscriptos[key];
+          <React.Fragment>
 
-              return (
-                <ListItem key={index}>
-                  <ListItemAvatar>
-                    <Avatar src={inscripto.photoURL}></Avatar>
-                  </ListItemAvatar>
-                  <ListItemText primary={inscripto.nombre}></ListItemText>
-                </ListItem>
-              );
-            })}
-          </List>
-        </Card> */}
-      </React.Fragment>
+            {cargando == true && (
+              <Typography>Realizando sorteo...</Typography>
+            )}
+
+            {cargando == false && (
+              <React.Fragment>
+                {/* No existe la actividad */}
+                {actividad == undefined && (
+                  <React.Fragment>
+                    <Typography>La actividad indicada no existe</Typography>
+                  </React.Fragment>
+                )}
+
+                {/* Hay actividad */}
+                {actividad && (
+                  <React.Fragment>
+                    <Typography variant="h5">{actividad.nombre}</Typography>
+                    <Typography variant="body2">{actividad.descripcion}</Typography>
+
+                    <Card style={{ padding: 16, marginTop: 16, borderRadius: 16 }}>
+                      <Typography variant="subtitle2">Ganador del sorteo</Typography>
+                      {actividad.ganadorSorteo == undefined && <Typography>Aun nadie</Typography>}
+                      {actividad.ganadorSorteo && <Typography>{actividad.ganadorSorteo.nombre}</Typography>}
+                    </Card>
+                    <Button onClick={this.onSorteoClick} style={{ marginTop: 16 }} variant="contained" color="primary">
+                      Realizar sorteo
+                </Button>
+                  </React.Fragment>
+                )}
+              </React.Fragment>
+            )}
+
+          </React.Fragment>
+        )}
+
+        {/* Dialogo mensaje */}
+        <DialogoMensaje
+          visible={this.state.dialogoMensajeVisible || false}
+          titulo={this.state.dialogoMensajeTitulo || ""}
+          mensaje={this.state.dialogoMensajeMensaje || ""}
+          onClose={this.onDialogoMensajeClose}
+          botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
+          textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
+          onBotonSiClick={this.onDialogoMensajeBotonSiClick}
+          autoCerrarBotonSi={false}
+          botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
+          textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
+          onBotonNoClick={this.onDialogoMensajeBotonNoClick}
+          autoCerrarBotonNo={false}
+        />
+
+      </MiPagina>
     );
   }
 }
