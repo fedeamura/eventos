@@ -83,10 +83,9 @@ module.exports = {
     // for React Native Web.
     extensions: [".web.js", ".mjs", ".js", ".json", ".web.jsx", ".jsx"],
     alias: {
-      // "react-dom": "@hot-loader/react-dom",
       // Support React Native Web
       // https://www.smashingmagazine.com/2016/08/a-glimpse-into-the-future-with-react-native-for-web/
-      'react-dom': '@hot-loader/react-dom',
+      "react-dom": "@hot-loader/react-dom",
       "react-native": "react-native-web",
       "@Redux": "_Redux",
       "@Rules": "_Rules",
@@ -151,8 +150,8 @@ module.exports = {
               // This is a feature of `babel-loader` for webpack (not Babel itself).
               // It enables caching results in ./node_modules/.cache/babel-loader/
               // directory for faster rebuilds.
-              cacheDirectory: true,
-              plugins: ["react-hot-loader/babel", "transform-decorators-legacy"]
+              cacheDirectory: true
+              // plugins: ["react-hot-loader/babel"]
               // plugins: ["react-hot-loader/babel", "transform-decorators-legacy"]
             }
           },

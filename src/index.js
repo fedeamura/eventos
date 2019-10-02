@@ -31,10 +31,10 @@ const theme = createMuiTheme({
   },
   palette: {
     primary: {
-      main: "#F44336"
+      main: "#861833"
     },
     secondary: {
-      main: "#F44336"
+      main: "#861833"
     },
     background: {
       default: "#eee"
@@ -51,11 +51,7 @@ let MiApp = () => (
         </MuiThemeProvider>
       </MuiPickersUtilsProvider>
     </ConnectedRouter>
-
   </Provider>
-)
-
-ReactDOM.render(
-  <MiApp />,
-  document.getElementById("root")
 );
+
+ReactDOM.render(<MiApp />, document.getElementById("root"));

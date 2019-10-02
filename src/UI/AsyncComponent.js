@@ -5,17 +5,25 @@ export default function asyncComponent(importComponent) {
     constructor(props) {
       super(props);
 
+      if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
+        importComponent().then(c => {
+          this.setState({ component: c.default });
+        });
+      }
+
       this.state = {
         component: null
       };
     }
 
     async componentDidMount() {
-      const { default: component } = await importComponent();
-
-      this.setState({
-        component: component
-      });
+      if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
+      } else {
+        const { default: component } = await importComponent();
+        this.setState({
+          component: component
+        });
+      }
     }
 
     render() {

@@ -11,8 +11,8 @@ import { push } from "connected-react-router";
 //Componentes
 import Typography from "@material-ui/core/Typography";
 import Card from "@material-ui/core/Card";
-import memoize from 'memoize-one';
-import _ from 'lodash';
+import memoize from "memoize-one";
+import _ from "lodash";
 
 //Colores
 import green from "@material-ui/core/colors/green";
@@ -58,89 +58,83 @@ class Actividad extends React.Component {
   }
 
   onBotonBackClick = () => {
-    this.props.redirect('/Evento/' + this.state.idEvento);
-  }
+    this.props.redirect("/Evento/" + this.state.idEvento);
+  };
+
+  getEvento = memoize((data, idEvento) => {
+    data = data || {};
+    let eventos = data.eventos || [];
+    return _.find(eventos, x => x.id == idEvento);
+  });
 
   getActividad = memoize((data, idEvento, idActividad) => {
     data = data || {};
     let eventos = data.eventos || [];
-    let evento = _.find(eventos, (x) => x.id == idEvento);
+    let evento = _.find(eventos, x => x.id == idEvento);
     if (evento == undefined) return undefined;
 
     let actividades = evento.actividades || [];
-    return _.find(actividades, (x) => x.id == idActividad);
+    return _.find(actividades, x => x.id == idActividad);
   });
 
   render() {
     const { usuario, data, dataCargando, dataReady } = this.props;
     const { idEvento, idActividad } = this.state;
 
-    let actividad = this.getActividad(data, idEvento, idActividad);
+    const evento = this.getEvento(data, idEvento);
+    const actividad = this.getActividad(data, idEvento, idActividad);
 
     return (
       <MiPagina
         cargando={dataCargando || false}
-        toolbarTitulo="Actividad"
+        toolbarTitulo={evento ? evento.nombre : "..."}
         toolbarLeftIconVisible={true}
         toolbarLeftIconClick={this.onBotonBackClick}
       >
-
         {dataReady == true && (
           <React.Fragment>
-
-
             {/* La actividad no existe */}
-            {actividad == undefined && (
-              <Typography>La actividad no existe </Typography>
-            )}
+            {actividad == undefined && <Typography>La actividad no existe </Typography>}
 
             {/* La actividad existe */}
             {actividad && (
               <React.Fragment>
+                <div style={{ width: "100%" }}>
+                  <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
+                </div>
 
-                {/* Ganador de la actividad */}
-                {actividad.ganadorSorteo && actividad.ganadorSorteo.uid == usuario.uid && (
-                  <Card style={{
+                <div
+                  style={{
+                    display: "flex",
+                    padding: 8,
+                    alignItems: "center",
+                    border: "1px solid rgba(0,0,0,0.1)",
                     borderRadius: 16,
-                    padding: 16,
-                    backgroundColor: green["500"],
-                    marginBottom: 32
-                  }}>
-                    <Typography variant="body1" style={{ color: "white" }}>
-                      ¡Ganaste el sorteo!
-                    </Typography>
-                    <Typography variant="body2" style={{ color: "white" }}>
-                      Mostrá esta pantalla a algun disertante del evento para recibir tu premio
-                    </Typography>
-                  </Card>
-                )}
+                    width: "fit-content",
+                    marginBottom: 16
+                  }}
+                >
+                  <div style={{ width: 16, height: 16, borderRadius: 16, backgroundColor: actividad.color, marginRight: 8 }} />
+                  <Typography>{actividad.grupo}</Typography>
+                </div>
 
                 {/* Info de la actividad */}
                 <Typography variant="h5">{actividad.nombre}</Typography>
                 <Typography variant="body2">{actividad.descripcion}</Typography>
 
-
                 {/* Inscripto  */}
                 <div style={{ marginTop: 16 }} />
 
-                {actividad.inscripto == true && (
-                  <Typography>Te inscribiste a esta actividad</Typography>
-                )}
+                {actividad.inscripto == true && <Typography>Te inscribiste a esta actividad</Typography>}
 
-                {actividad.inscripto != true && (
-                  <Typography>No estás inscripto en esta actividad</Typography>
-                )}
-
+                {actividad.inscripto != true && <Typography>No estás inscripto en esta actividad</Typography>}
               </React.Fragment>
             )}
-
           </React.Fragment>
         )}
-
       </MiPagina>
     );
   }
-
 }
 
 let componente = Actividad;

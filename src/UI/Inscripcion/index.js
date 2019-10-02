@@ -11,11 +11,11 @@ import { push } from "connected-react-router";
 //Componentes
 import Typography from "@material-ui/core/Typography";
 import Button from "@material-ui/core/Button";
-import _ from 'lodash';
+import _ from "lodash";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import DialogoMensaje from '@Componentes/MiDialogoMensaje';
+import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
 const mapStateToProps = state => {
   return {
@@ -58,20 +58,19 @@ class Inscripcion extends React.Component {
 
   inscribir = async () => {
     try {
-
       this.setState({ cargando: true });
 
       var db = window.firebase.firestore();
       const codigo = this.state.codigo;
-      if (codigo == undefined || codigo == '' || codigo.split('_').length != 2) {
+      if (codigo == undefined || codigo == "" || codigo.split("_").length != 2) {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({
           autoCerrar: false,
-          mensaje: 'El código QR escaneado es inválido',
-          botonSiMensaje: 'Volver',
+          mensaje: "El código QR escaneado es inválido",
+          botonSiMensaje: "Volver",
           onBotonSiClick: () => {
             setTimeout(() => {
-              this.props.redirect('/')
+              this.props.redirect("/");
             }, 300);
           }
         });
@@ -85,18 +84,18 @@ class Inscripcion extends React.Component {
 
       //Busco el evento
       let eventos = data.eventos || [];
-      let evento = _.find(eventos, (x) => x.id == idEvento);
+      let evento = _.find(eventos, x => x.id == idEvento);
 
       //El evento no existe
       if (evento == undefined) {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({
           autoCerrar: false,
-          mensaje: 'El código QR escaneado es inválido',
-          botonSiMensaje: 'Volver',
+          mensaje: "El código QR escaneado es inválido",
+          botonSiMensaje: "Volver",
           onBotonSiClick: () => {
             setTimeout(() => {
-              this.props.redirect('/')
+              this.props.redirect("/");
             }, 300);
           }
         });
@@ -105,18 +104,18 @@ class Inscripcion extends React.Component {
 
       //Busco la actividad
       let actividades = evento.actividades || [];
-      let actividad = _.find(actividades, (x) => x.id == idActividad);
+      let actividad = _.find(actividades, x => x.id == idActividad);
 
       //La activdad no existe
       if (actividad == undefined) {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({
           autoCerrar: false,
-          mensaje: 'El código QR escaneado es inválido',
-          botonSiMensaje: 'Volver',
+          mensaje: "El código QR escaneado es inválido",
+          botonSiMensaje: "Volver",
           onBotonSiClick: () => {
             setTimeout(() => {
-              this.props.redirect('/')
+              this.props.redirect("/");
             }, 300);
           }
         });
@@ -124,16 +123,25 @@ class Inscripcion extends React.Component {
       }
 
       //Inscribo
-      await db.collection('info').doc('inscripciones').collection('porUsuario').doc(usuario.uid).set({
-        usuario: {
-          nombre: usuario.nombre,
-          photoURL: usuario.photoURL,
-          uid: usuario.uid,
-        },
-        [evento.id]: {
-          [actividad.id]: true
-        },
-      }, { merge: true })
+      await db
+        .collection("info")
+        .doc("inscripciones")
+        .collection("porUsuario")
+        .doc(usuario.uid)
+        .set(
+          {
+            usuario: {
+              nombre: usuario.nombre,
+              photoURL: usuario.photoURL,
+              uid: usuario.uid
+            },
+            [evento.id]: {
+              inscripto: true,
+              [actividad.id]: true
+            }
+          },
+          { merge: true }
+        );
 
       this.setState({ cargando: false, data: true });
     } catch (ex) {
@@ -141,15 +149,15 @@ class Inscripcion extends React.Component {
 
       this.mostrarDialogoMensaje({
         autoCerrar: false,
-        mensaje: 'Error procesando la solicitud',
+        mensaje: "Error procesando la solicitud",
         botonNoVisible: true,
-        botonNoMensaje: 'Volver',
+        botonNoMensaje: "Volver",
         onBotonNoClick: () => {
           setTimeout(() => {
-            this.props.redirect('/')
+            this.props.redirect("/");
           }, 300);
         },
-        botonSiMensaje: 'Reintentar',
+        botonSiMensaje: "Reintentar",
         onBotonSiClick: () => {
           this.setState({ cargando: true });
           setTimeout(() => {
@@ -168,8 +176,8 @@ class Inscripcion extends React.Component {
 
   onBotonBackClick = () => {
     let idEvento = this.state.codigo.split("_")[0];
-    this.props.redirect('/Evento/' + idEvento);
-  }
+    this.props.redirect("/Evento/" + idEvento);
+  };
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -225,8 +233,6 @@ class Inscripcion extends React.Component {
         toolbarLeftIconVisible={true}
         toolbarLeftIconClick={this.onBotonBackClick}
       >
-
-
         {data && (
           <div style={{ padding: 16, display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
             <Typography style={{ textAlign: "center", marginBottom: 16 }} variant="h5">
@@ -254,7 +260,6 @@ class Inscripcion extends React.Component {
           onBotonNoClick={this.onDialogoMensajeBotonNoClick}
           autoCerrarBotonNo={false}
         />
-
       </MiPagina>
     );
   }

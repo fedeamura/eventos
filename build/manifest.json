@@ -2,6 +2,6 @@
   "icons": [],
   "start_url": "./index.html",
   "display": "standalone",
-  "theme_color": "#F44336",
+  "theme_color": "#861833",
   "background_color": "#ffffff"
 }

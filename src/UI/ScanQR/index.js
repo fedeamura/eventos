@@ -10,18 +10,17 @@ import { push } from "connected-react-router";
 
 //Componentes
 import Webcam from "react-webcam";
-import QrcodeDecoder from 'qrcode-decoder';
+import QrcodeDecoder from "qrcode-decoder";
 import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
-import DialogoMensaje from '@Componentes/MiDialogoMensaje';
-
+import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
 //Icons
-import MdiIcon from '@mdi/react'
-import { mdiCameraPartyMode } from '@mdi/js';
+import MdiIcon from "@mdi/react";
+import { mdiCameraPartyMode } from "@mdi/js";
 import { CircularProgress } from "../../../node_modules/@material-ui/core";
 
 const mapStateToProps = state => {
@@ -47,7 +46,7 @@ class ScanQR extends React.Component {
     };
 
     this.webcam = React.createRef();
-    this.contenedor = React.createRef()
+    this.contenedor = React.createRef();
   }
 
   componentDidMount() {
@@ -55,21 +54,20 @@ class ScanQR extends React.Component {
   }
 
   init = async () => {
-
     try {
       let dispositivos = await navigator.mediaDevices.enumerateDevices();
       let camaras = [];
 
-      dispositivos.forEach((d) => {
-        if (d.kind == 'videoinput') {
+      dispositivos.forEach(d => {
+        if (d.kind == "videoinput") {
           camaras.push(d);
         }
       });
 
-
       console.log(camaras);
       if (camaras.length == 0) {
-        throw Error('Su dispositivo no tiene ninguna camara');
+        this.setState({ cargando: false, error: "Su dispositivo no tiene ninguna camara" });
+        return;
       }
 
       this.setState({ camaras });
@@ -88,29 +86,29 @@ class ScanQR extends React.Component {
               let data = result.data;
 
               let codigo;
-              let partes = data.split('/');
+              let partes = data.split("/");
               if (partes.length != 1) {
                 codigo = partes[partes.length - 1];
               } else {
                 codigo = data;
               }
 
-              this.props.redirect('/Inscripcion/' + codigo);
+              this.props.redirect("/Inscripcion/" + codigo);
             }
           }
-        } catch (ex) {
-
-        }
+        } catch (ex) {}
       }, 500);
-
     } catch (ex) {
-      this.setState({ error: 'Error comunicándose con las cámaras del dispositivo' })
+      this.setState({
+        cargando: false,
+        error: "Error comunicándose con las cámaras del dispositivo"
+      });
     }
-  }
+  };
 
   onBotonBackClick = () => {
-    this.props.redirect('/');
-  }
+    this.props.redirect("/");
+  };
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -156,7 +154,6 @@ class ScanQR extends React.Component {
     }
   };
 
-
   render() {
     const { frente, camaras, error, width } = this.state;
 
@@ -167,6 +164,10 @@ class ScanQR extends React.Component {
       if (camaras == undefined || width == undefined) {
         cargando = true;
       }
+    }
+
+    if (error) {
+      cargando = false;
     }
 
     if (frente == true) {
@@ -191,24 +192,20 @@ class ScanQR extends React.Component {
         toolbarLeftIconVisible={true}
         toolbarLeftIconClick={this.onBotonBackClick}
       >
-
-
-        {error != undefined && (
-          <Typography>{error}</Typography>
-        )}
+        {error != undefined && <Typography>{error}</Typography>}
 
         {error == undefined && camaras != undefined && camaras.length != 0 && (
-
           <div ref={this.contenedor}>
+            <div
+              style={{
+                width: "100%",
 
-            <div style={{
-              width: '100%',
-
-              justifyContent: 'center',
-              display: 'flex', alignItems: 'center', alignContent: 'center'
-            }}>
-
-
+                justifyContent: "center",
+                display: "flex",
+                alignItems: "center",
+                alignContent: "center"
+              }}
+            >
               {this.state.width && (
                 <Button
                   variant="outlined"
@@ -218,42 +215,40 @@ class ScanQR extends React.Component {
                     this.setState({
                       width: undefined,
                       frente: !this.state.frente
-                    })
-                  }}>
-
-                  <MdiIcon path={mdiCameraPartyMode}
-                    title="Cambiar cámara"
-                    size={1}
-                    style={{ marginRight: 8 }}
-                    color="black"
-                  />
-                  Cambiar cámara</Button>
+                    });
+                  }}
+                >
+                  <MdiIcon path={mdiCameraPartyMode} title="Cambiar cámara" size={1} style={{ marginRight: 8 }} color="black" />
+                  Cambiar cámara
+                </Button>
               )}
             </div>
 
             {this.state.width && (
               <React.Fragment>
-
-                <div style={{
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  minHeight: 300,
-                  position: 'relative',
-                  backgroundColor: 'rgba(0,0,0,0.1)'
-                }}>
-
+                <div
+                  style={{
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    minHeight: 300,
+                    position: "relative",
+                    backgroundColor: "rgba(0,0,0,0.1)"
+                  }}
+                >
                   {/* Indicador cargando */}
-                  <div style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignContent: 'center',
-                    alignItems: 'center'
-                  }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      display: "flex",
+                      justifyContent: "center",
+                      alignContent: "center",
+                      alignItems: "center"
+                    }}
+                  >
                     <CircularProgress />
                   </div>
 
@@ -263,24 +258,22 @@ class ScanQR extends React.Component {
                     ref={this.webcam}
                     style={{
                       zIndex: 10,
-                      position: 'relative',
+                      position: "relative",
                       left: 0,
                       right: 0,
                       top: 0,
-                      bottom: 0,
+                      bottom: 0
                     }}
                     width={this.state.width}
                     audio={false}
                   />
                 </div>
 
-
                 {/* <Typography style={{ textAlign: 'center' }}>Apunte al código QR</Typography> */}
               </React.Fragment>
             )}
           </div>
         )}
-
 
         <DialogoMensaje
           visible={this.state.dialogoMensajeVisible || false}
@@ -296,7 +289,6 @@ class ScanQR extends React.Component {
           onBotonNoClick={this.onDialogoMensajeBotonNoClick}
           autoCerrarBotonNo={false}
         />
-
       </MiPagina>
     );
   }

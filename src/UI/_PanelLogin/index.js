@@ -3,40 +3,37 @@ import React from "react";
 //Styles
 import { withStyles } from "@material-ui/core/styles";
 import styles from "./styles";
+import classNames from "classnames";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
 import Button from "@material-ui/core/Button";
+import CircularProgress from "@material-ui/core/CircularProgress";
 
 //Mis componentes
-import DialogoMensaje from '@Componentes/MiDialogoMensaje';
+import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
 class PanelLogin extends React.Component {
-
   constructor(props) {
     super(props);
 
-    this.state = {
-    }
+    this.state = {};
   }
 
-  componentDidMount() {
-  }
+  componentDidMount() {}
 
   onBotonGoogleClick = async () => {
     try {
       this.setState({ cargando: true });
       var provider = new window.firebase.auth.GoogleAuthProvider();
-      await window.firebase
-        .auth()
-        .signInWithPopup(provider);
+      await window.firebase.auth().signInWithPopup(provider);
       this.setState({ cargando: false, error: undefined });
     } catch (ex) {
-      console.log('Error logeando', ex);
+      console.log("Error logeando", ex);
       this.setState({ cargando: false });
 
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
-      this.mostrarDialogoMensaje({ titulo: 'Error procesando la solicitud', mensaje: mensaje })
+      let mensaje = typeof ex === "object" ? ex.message : ex;
+      this.mostrarDialogoMensaje({ titulo: "Error procesando la solicitud", mensaje: mensaje });
     }
   };
 
@@ -44,16 +41,14 @@ class PanelLogin extends React.Component {
     try {
       this.setState({ cargando: true });
       var provider = new window.firebase.auth.FacebookAuthProvider();
-      await window.firebase
-        .auth()
-        .signInWithPopup(provider);
+      await window.firebase.auth().signInWithPopup(provider);
       this.setState({ cargando: false });
     } catch (ex) {
-      console.log('Error logeando', ex);
+      console.log("Error logeando", ex);
       this.setState({ cargando: false });
 
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
-      this.mostrarDialogoMensaje({ titulo: 'Error procesando la solicitud', mensaje: mensaje })
+      let mensaje = typeof ex === "object" ? ex.message : ex;
+      this.mostrarDialogoMensaje({ titulo: "Error procesando la solicitud", mensaje: mensaje });
     }
   };
 
@@ -61,16 +56,14 @@ class PanelLogin extends React.Component {
     try {
       this.setState({ cargando: true });
       var provider = new window.firebase.auth.TwitterAuthProvider();
-      await window.firebase
-        .auth()
-        .signInWithPopup(provider);
+      await window.firebase.auth().signInWithPopup(provider);
       this.setState({ cargando: false });
     } catch (ex) {
-      console.log('Error logeando', ex);
+      console.log("Error logeando", ex);
       this.setState({ cargando: false });
 
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
-      this.mostrarDialogoMensaje({ titulo: 'Error procesando la solicitud', mensaje: mensaje })
+      let mensaje = typeof ex === "object" ? ex.message : ex;
+      this.mostrarDialogoMensaje({ titulo: "Error procesando la solicitud", mensaje: mensaje });
     }
   };
 
@@ -78,16 +71,14 @@ class PanelLogin extends React.Component {
     try {
       this.setState({ cargando: true });
       var provider = new window.firebase.auth.GithubAuthProvider();
-      await window.firebase
-        .auth()
-        .signInWithPopup(provider);
+      await window.firebase.auth().signInWithPopup(provider);
       this.setState({ cargando: false });
     } catch (ex) {
-      console.log('Error logeando', ex);
+      console.log("Error logeando", ex);
       this.setState({ cargando: false });
 
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
-      this.mostrarDialogoMensaje({ titulo: 'Error procesando la solicitud', mensaje: mensaje })
+      let mensaje = typeof ex === "object" ? ex.message : ex;
+      this.mostrarDialogoMensaje({ titulo: "Error procesando la solicitud", mensaje: mensaje });
     }
   };
 
@@ -135,17 +126,24 @@ class PanelLogin extends React.Component {
     }
   };
 
-
-
   render() {
     const { classes } = this.props;
+    const { cargando } = this.state;
+
     return (
       <div className={classes.root}>
-        {this.state.error && (
-          <Typography>{this.state.error}</Typography>
-        )}
+        {this.state.error && <Typography>{this.state.error}</Typography>}
 
-        <Typography variant="h5" style={{ textAlign: 'center' }}>Debe iniciar sesion para continuar</Typography>
+        <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32 }}>
+          <img
+            src="http://oniet.ubp.edu.ar/wp-content/uploads/2018/10/logoonietubp.png"
+            style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100 }}
+          />
+        </div>
+
+        <Typography variant="h5" style={{ textAlign: "center" }}>
+          Debe iniciar sesion para continuar
+        </Typography>
         <div className="botones">
           <Button className="boton" variant="outlined" size="small" onClick={this.onBotonGoogleClick}>
             Google
@@ -162,6 +160,9 @@ class PanelLogin extends React.Component {
           </Button>
         </div>
 
+        <div className={classNames(classes.contenedorCargando, cargando == true && "visible")}>
+          <CircularProgress />
+        </div>
 
         <DialogoMensaje
           visible={this.state.dialogoMensajeVisible || false}
@@ -177,7 +178,6 @@ class PanelLogin extends React.Component {
           onBotonNoClick={this.onDialogoMensajeBotonNoClick}
           autoCerrarBotonNo={false}
         />
-
       </div>
     );
   }
