@@ -22,6 +22,7 @@ import DialogoMensaje from '@Componentes/MiDialogoMensaje';
 //Icons
 import MdiIcon from '@mdi/react'
 import { mdiCameraPartyMode } from '@mdi/js';
+import { CircularProgress } from "../../../node_modules/@material-ui/core";
 
 const mapStateToProps = state => {
   return {
@@ -50,10 +51,8 @@ class ScanQR extends React.Component {
   }
 
   componentDidMount() {
-
     this.init();
   }
-
 
   init = async () => {
 
@@ -87,7 +86,16 @@ class ScanQR extends React.Component {
             if (result != false) {
               clearInterval(this.intervalo);
               let data = result.data;
-              this.props.redirect('/Inscripcion/' + data);
+
+              let codigo;
+              let partes = data.split('/');
+              if (partes.length != 1) {
+                codigo = partes[partes.length - 1];
+              } else {
+                codigo = data;
+              }
+
+              this.props.redirect('/Inscripcion/' + codigo);
             }
           }
         } catch (ex) {
@@ -100,6 +108,9 @@ class ScanQR extends React.Component {
     }
   }
 
+  onBotonBackClick = () => {
+    this.props.redirect('/');
+  }
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -147,9 +158,16 @@ class ScanQR extends React.Component {
 
 
   render() {
-    const { frente, camaras, error } = this.state;
+    const { frente, camaras, error, width } = this.state;
 
     let videoConstraints;
+
+    let cargando = this.state.cargando || false;
+    if (cargando == false) {
+      if (camaras == undefined || width == undefined) {
+        cargando = true;
+      }
+    }
 
     if (frente == true) {
       videoConstraints = {
@@ -167,15 +185,17 @@ class ScanQR extends React.Component {
 
     return (
       <MiPagina
-        cargando={this.state.cargando || false}
+        full
+        cargando={cargando || false}
         toolbarTitulo="Escanear código QR"
-        toolbarLeftIconVisible={true}>
+        toolbarLeftIconVisible={true}
+        toolbarLeftIconClick={this.onBotonBackClick}
+      >
 
 
         {error != undefined && (
           <Typography>{error}</Typography>
         )}
-
 
         {error == undefined && camaras != undefined && camaras.length != 0 && (
 
@@ -188,38 +208,74 @@ class ScanQR extends React.Component {
               display: 'flex', alignItems: 'center', alignContent: 'center'
             }}>
 
-              <Button
-                variant="outlined"
-                size="small"
-                style={{ marginBottom: 16 }}
-                onClick={() => {
-                  this.setState({
-                    width: undefined,
-                    frente: !this.state.frente
-                  })
-                }}>
 
+              {this.state.width && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  style={{ marginBottom: 16 }}
+                  onClick={() => {
+                    this.setState({
+                      width: undefined,
+                      frente: !this.state.frente
+                    })
+                  }}>
 
-                <MdiIcon path={mdiCameraPartyMode}
-                  title="Cambiar cámara"
-                  size={1}
-                  style={{ marginRight: 8 }}
-                  color="black"
-                />
-                Cambiar cámara</Button>
+                  <MdiIcon path={mdiCameraPartyMode}
+                    title="Cambiar cámara"
+                    size={1}
+                    style={{ marginRight: 8 }}
+                    color="black"
+                  />
+                  Cambiar cámara</Button>
+              )}
             </div>
 
             {this.state.width && (
               <React.Fragment>
 
-                <Webcam
-                  videoConstraints={videoConstraints}
-                  ref={this.webcam}
-                  width={this.state.width}
-                  audio={false}
-                />
+                <div style={{
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  minHeight: 300,
+                  position: 'relative',
+                  backgroundColor: 'rgba(0,0,0,0.1)'
+                }}>
 
-                <Typography style={{ textAlign: 'center' }}>Apunte al código QR</Typography>
+                  {/* Indicador cargando */}
+                  <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    <CircularProgress />
+                  </div>
+
+                  {/* Camara */}
+                  <Webcam
+                    videoConstraints={videoConstraints}
+                    ref={this.webcam}
+                    style={{
+                      zIndex: 10,
+                      position: 'relative',
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                    }}
+                    width={this.state.width}
+                    audio={false}
+                  />
+                </div>
+
+
+                {/* <Typography style={{ textAlign: 'center' }}>Apunte al código QR</Typography> */}
               </React.Fragment>
             )}
           </div>

@@ -67,6 +67,17 @@ class App extends React.Component {
   }
 
   componentDidMount() {
+
+    let url = window.location.href;
+    if (url.indexOf('localhost') == -1) {
+      if (url.indexOf('http://') != -1) {
+        let partesUrl = url.split('http://');
+        let urlNueva = 'https://' + partesUrl[1];
+        window.location.href = urlNueva;
+        return;
+      }
+    }
+
     this.unsubscribeFirebaseAuth = window.firebase.auth().onAuthStateChanged(user => {
       if (user) {
         this.props.login(this.convertirFirebaseUser(user));

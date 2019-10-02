@@ -94,6 +94,10 @@ class ActividadSorteo extends React.Component {
     }
   };
 
+  onBotonBackClick = () => {
+    this.props.redirect('/Evento/' + this.state.idEvento);
+  }
+
   getActividad = memoize((data, idEvento, idActividad) => {
     data = data || {};
     let eventos = data.eventos || [];
@@ -159,7 +163,10 @@ class ActividadSorteo extends React.Component {
     return (
       <MiPagina
         cargando={dataCargando || false}
-        toolbarTitulo="Sorteo" toolbarLeftIconVisible={true}>
+        toolbarTitulo="Sorteo"
+        toolbarLeftIconVisible={true}
+        toolbarLeftIconClick={this.onBotonBackClick}
+      >
 
         {/* Info lista */}
         {dataReady == true && (

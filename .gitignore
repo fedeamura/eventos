@@ -59,3 +59,9 @@ typings/
 
 # dotenv environment variables file
 .env
+
+build/
+build/asset-manifest.json
+build/service-worker.js
+build/manifest.json
+build/index.html

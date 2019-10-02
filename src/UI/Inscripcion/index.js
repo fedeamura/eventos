@@ -50,7 +50,9 @@ class Inscripcion extends React.Component {
 
   componentWillReceiveProps(nextProps) {
     if (nextProps.dataReady == true && this.props.dataReady == false) {
-      this.inscribir();
+      setTimeout(() => {
+        this.inscribir();
+      }, 300);
     }
   }
 
@@ -135,7 +137,6 @@ class Inscripcion extends React.Component {
 
       this.setState({ cargando: false, data: true });
     } catch (ex) {
-      console.log(ex);
       this.setState({ cargando: false });
 
       this.mostrarDialogoMensaje({
@@ -164,6 +165,11 @@ class Inscripcion extends React.Component {
     let idActividad = this.state.codigo.split("_")[1];
     this.props.redirect("/Actividad/" + idEvento + "/" + idActividad);
   };
+
+  onBotonBackClick = () => {
+    let idEvento = this.state.codigo.split("_")[0];
+    this.props.redirect('/Evento/' + idEvento);
+  }
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -216,7 +222,9 @@ class Inscripcion extends React.Component {
       <MiPagina
         cargando={cargando || false}
         toolbarTitulo="Inscripción a una actividad"
-        toolbarLeftIconVisible={false}>
+        toolbarLeftIconVisible={true}
+        toolbarLeftIconClick={this.onBotonBackClick}
+      >
 
 
         {data && (

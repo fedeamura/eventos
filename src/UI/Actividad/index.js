@@ -57,6 +57,10 @@ class Actividad extends React.Component {
     }
   }
 
+  onBotonBackClick = () => {
+    this.props.redirect('/Evento/' + this.state.idEvento);
+  }
+
   getActividad = memoize((data, idEvento, idActividad) => {
     data = data || {};
     let eventos = data.eventos || [];
@@ -76,7 +80,10 @@ class Actividad extends React.Component {
     return (
       <MiPagina
         cargando={dataCargando || false}
-        toolbarTitulo="Actividad" toolbarLeftIconVisible={true}>
+        toolbarTitulo="Actividad"
+        toolbarLeftIconVisible={true}
+        toolbarLeftIconClick={this.onBotonBackClick}
+      >
 
         {dataReady == true && (
           <React.Fragment>

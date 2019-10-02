@@ -65,6 +65,11 @@ class Evento extends React.Component {
     return _.find(eventos, (x) => x.id == id);
   })
 
+  onBotonBackClick = () => {
+    this.props.redirect('/');
+  }
+
+
   render() {
     const { data, dataCargando, dataReady } = this.props;
     const { id } = this.state;
@@ -74,7 +79,10 @@ class Evento extends React.Component {
     return (
       <MiPagina
         cargando={dataCargando || false}
-        toolbarTitulo="Evento" toolbarLeftIconVisible={true}>
+        toolbarTitulo="Evento"
+        toolbarLeftIconVisible={true}
+        toolbarLeftIconClick={this.onBotonBackClick}
+      >
 
         {/* Cargue los eventos  */}
         {dataReady && (
