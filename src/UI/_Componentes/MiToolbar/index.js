@@ -146,7 +146,7 @@ class MiToolbar extends React.Component {
             open={Boolean(this.state.anchorPopupUsuario)}
             onClose={this.onUsuarioMenuClose}
           >
-            <div className={classes.menuUsuarioInfo} style={{ display: "flex", minWidth: 200 }}>
+            <div className={classes.menuUsuarioInfo} style={{ display: "flex", minWidth: 200, maxWidth: 300 }}>
               <Avatar alt="Menu del usuario" src={this.props.usuario.photoURL} className={classNames(classes.icono)} />
               <Typography align="center" variant="subtitle1" color="inherit">
                 {this.props.usuario.nombre}

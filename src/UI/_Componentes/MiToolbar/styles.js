@@ -33,10 +33,6 @@ const styles = theme => {
       flexDirection: "column",
       alignItems: "flex-start",
 
-      // [theme.breakpoints.up("sm")]: {
-      //   alignItems: "center",
-      //   flexDirection: "row"
-      // },
       "& .titulo": {
         fontSize: 16,
         lineHeight: "initial"
@@ -45,11 +41,6 @@ const styles = theme => {
         paddingLeft: 0,
         marginLeft: 0,
         lineHeight: "initial"
-        // [theme.breakpoints.up("sm")]: {
-        //   borderLeft: "1px solid rgba(0,0,0,0.1)",
-        //   paddingLeft: theme.spacing(2),
-        //   marginLeft: theme.spacing(2)
-        // }
       }
     },
 
@@ -61,9 +52,9 @@ const styles = theme => {
     },
     menuUsuario: {
       "& div:nth-child(2)": {
-        width: "20rem",
+        // width: "20rem",
         // minWidth: "20rem",
-        maxWidth: "calc(100% - 2rem)"
+        // maxWidth: "calc(100% - 2rem)"
       },
       "& ul": {
         paddingTop: 0

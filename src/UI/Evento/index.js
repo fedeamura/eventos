@@ -3,6 +3,7 @@ import React from "react";
 //Styles
 import styles from "./styles";
 import { withStyles } from "@material-ui/core/styles";
+import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
 
 //REDUX
 import { connect } from "react-redux";
@@ -78,6 +79,20 @@ class Evento extends React.Component {
     this.props.redirect("/");
   };
 
+  getTheme = memoize(color => {
+    if (color == undefined) return createMuiTheme({});
+    return createMuiTheme({
+      palette: {
+        primary: {
+          main: color
+        },
+        secondary: {
+          main: color
+        }
+      }
+    });
+  });
+
   render() {
     const { data, dataCargando, dataReady, usuario } = this.props;
     const { id } = this.state;
@@ -98,85 +113,99 @@ class Evento extends React.Component {
       }
     }
 
+    const color = evento && evento.color;
+    let theme = this.getTheme(color);
+
     return (
-      <MiPagina
-        cargando={dataCargando || false}
-        toolbarTitulo={evento ? evento.nombre : "..."}
-        toolbarLeftIconVisible={false}
-        toolbarLeftIconClick={this.onBotonBackClick}
-      >
-        {/* Cargue los eventos  */}
-        {dataReady && (
-          <React.Fragment>
-            {/* Evento no existente  */}
-            {evento == undefined && <Typography>No existe</Typography>}
+      <MuiThemeProvider theme={theme}>
+        <MiPagina
+          cargando={dataCargando || false}
+          toolbarSubtitulo={evento ? evento.nombre : "..."}
+          toolbarLeftIconVisible={true}
+          toolbarLeftIconClick={this.onBotonBackClick}
+        >
+          {/* Cargue los eventos  */}
+          {dataReady && (
+            <React.Fragment>
+              {/* Evento no existente  */}
+              {evento == undefined && <Typography>No existe</Typography>}
 
-            {/* Evento existente */}
-            {evento && (
-              <React.Fragment>
-                <div style={{ width: "100%" }}>
-                  <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
-                </div>
+              {/* Evento existente */}
+              {evento && (
+                <React.Fragment>
+                  <div style={{ width: "100%" }}>
+                    <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
+                  </div>
 
-                {/* <Typography variant="h5">{evento.nombre}</Typography> */}
-                <Typography variant="body2">{evento.descripcion}</Typography>
+                  {/* <Typography variant="h5">{evento.nombre}</Typography> */}
+                  <Typography variant="body2">{evento.descripcion}</Typography>
 
-                {ganador == true && (
-                  <Card style={{ padding: 16, borderRadius: 16, backgroundColor: "green", color: "white", marginTop: 32 }}>
-                    <Typography>¡Ganaste un sorteo!</Typography>
-                  </Card>
-                )}
+                  {ganador == true && (
+                    <Card style={{ padding: 16, borderRadius: 16, backgroundColor: "green", color: "white", marginTop: 32 }}>
+                      <Typography>¡Ganaste un sorteo!</Typography>
+                    </Card>
+                  )}
 
-                {/* Actividades  */}
+                  {/* Actividades  */}
 
-                {grupos && (
-                  <Typography variant="subtitle2" style={{ marginTop: 32, marginBottom: 16 }}>
-                    Actividades
-                  </Typography>
-                )}
-                {grupos &&
-                  grupos.map((grupo, index) => {
-                    let actividades = _.orderBy(actividadesPorGrupo[grupo], "nombre");
-                    let color = actividades[0].color;
+                  {grupos && (
+                    <Typography variant="subtitle2" style={{ marginTop: 32, marginBottom: 16 }}>
+                      Actividades
+                    </Typography>
+                  )}
+                  {grupos &&
+                    grupos.map((grupo, index) => {
+                      let actividades = _.orderBy(actividadesPorGrupo[grupo], "nombre");
+                      let color = actividades[0].color;
 
-                    let listaActividades = actividades.map((actividad, key) => {
+                      let listaActividades = actividades.map((actividad, key) => {
+                        return (
+                          <ListItem
+                            button
+                            key={key}
+                            onClick={() => {
+                              this.onActividadClick(actividad);
+                            }}
+                          >
+                            <ListItemText primary={actividad.nombre}></ListItemText>
+                            <ListItemSecondaryAction>
+                              <Checkbox checked={actividad.inscripto == true} />
+                            </ListItemSecondaryAction>
+                          </ListItem>
+                        );
+                      });
+
                       return (
-                        <ListItem
-                          button
-                          key={key}
-                          onClick={() => {
-                            this.onActividadClick(actividad);
-                          }}
-                        >
-                          <ListItemText primary={actividad.nombre}></ListItemText>
-                          <ListItemSecondaryAction>
-                            <Checkbox checked={actividad.inscripto == true} />
-                          </ListItemSecondaryAction>
-                        </ListItem>
+                        <Card key={index} style={{ marginTop: 16, borderRadius: 16, borderLeft: "8px solid " + color }}>
+                          <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">
+                            {grupo}
+                          </Typography>
+                          <List>{listaActividades}</List>
+                        </Card>
                       );
-                    });
+                    })}
 
-                    return (
-                      <Card key={index} style={{ marginTop: 16, borderRadius: 16, borderLeft: "8px solid " + color }}>
-                        <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">
-                          {grupo}
-                        </Typography>
-                        <List>{listaActividades}</List>
-                      </Card>
-                    );
-                  })}
+                  <div style={{ height: 72 }} />
+                </React.Fragment>
+              )}
+            </React.Fragment>
+          )}
 
-                <div style={{ height: 72 }} />
-              </React.Fragment>
-            )}
-          </React.Fragment>
-        )}
-
-        {/* Boton escanear */}
-        <Fab color="primary" onClick={this.onBotonScanClick} style={{ position: "absolute", right: 16, bottom: 16 }}>
-          <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} color="white" />
-        </Fab>
-      </MiPagina>
+          {/* Boton escanear */}
+          <Fab
+            color="primary"
+            onClick={this.onBotonScanClick}
+            style={{
+              position: "absolute",
+              right: 16,
+              bottom: 16,
+              backgroundColor: color
+            }}
+          >
+            <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} color="white" />
+          </Fab>
+        </MiPagina>
+      </MuiThemeProvider>
     );
   }
 }

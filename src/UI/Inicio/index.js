@@ -22,6 +22,7 @@ import MiPagina from "@UI/_MiPagina";
 //Icons
 import MdiIcon from "@mdi/react";
 import { mdiQrcodeScan } from "@mdi/js";
+import { ButtonBase } from "@material-ui/core";
 
 const mapStateToProps = state => {
   return {
@@ -89,6 +90,9 @@ class Inicio extends React.Component {
         {/* Con eventos */}
         {dataReady == true && eventos != undefined && eventos.length != 0 && (
           <div>
+            <Typography variant="subtitle2" style={{ marginBottom: 16, marginLeft: 4 }}>
+              Eventos disponibles
+            </Typography>
             {/* Listado de eventos */}
             {eventos &&
               eventos.map((evento, index) => {
@@ -100,7 +104,9 @@ class Inicio extends React.Component {
                       this.onEventoClick(evento);
                     }}
                   >
-                    <Typography>{evento.nombre}</Typography>
+                    <ButtonBase className="content">
+                      <Typography>{evento.nombre}</Typography>
+                    </ButtonBase>
                   </Card>
                 );
               })}

@@ -188,7 +188,7 @@ class ScanQR extends React.Component {
       <MiPagina
         full
         cargando={cargando || false}
-        toolbarTitulo="Escanear código QR"
+        toolbarSubtitulo="Escanear código QR"
         toolbarLeftIconVisible={true}
         toolbarLeftIconClick={this.onBotonBackClick}
       >
@@ -199,7 +199,6 @@ class ScanQR extends React.Component {
             <div
               style={{
                 width: "100%",
-
                 justifyContent: "center",
                 display: "flex",
                 alignItems: "center",

@@ -8,7 +8,7 @@ import "react-virtualized/styles.css";
 
 //Router
 import { withRouter } from "react-router-dom";
-import { Route, Redirect } from "react-router-dom";
+import { Route } from "react-router-dom";
 import { AnimatedSwitch } from "react-router-transition";
 
 //REDUX
@@ -188,7 +188,6 @@ class App extends React.Component {
               }
             });
 
-            console.log("Eventos", eventos);
             this.props.setReady(true);
             this.props.setCargando(false);
             this.props.setData({
@@ -213,22 +212,8 @@ class App extends React.Component {
     };
   };
 
-  // revalidateUser() {
-  //   let firebaseUser = window.firebase.auth().currentUser;
-  //   let reduxUser = this.props.usuario;
-
-  //   if ((firebaseUser == undefined) != (reduxUser == undefined)) {
-  //     if (firebaseUser) {
-  //       this.props.login(this.convertirFirebaseUser(firebaseUser));
-  //     } else {
-  //       this.props.cerrarSesion();
-  //     }
-  //   }
-  // }
-
   render() {
     const { classes } = this.props;
-    // this.revalidateUser();
 
     return (
       <div className={classes.root}>
@@ -263,7 +248,7 @@ class App extends React.Component {
     return (
       <main className={classes.content}>
         <AnimatedSwitch atEnter={{ opacity: 0 }} atLeave={{ opacity: 0 }} atActive={{ opacity: 1 }} className={"switch-wrapper"}>
-          <Redirect exact from="/" to="Evento/oniet" />
+          {/* <Redirect exact from="/" to="Evento/oniet" /> */}
 
           <Route exact path={`${base}/`} component={Inicio} />
 

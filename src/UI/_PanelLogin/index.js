@@ -134,12 +134,12 @@ class PanelLogin extends React.Component {
       <div className={classes.root}>
         {this.state.error && <Typography>{this.state.error}</Typography>}
 
-        <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32 }}>
+        {/* <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32 }}>
           <img
             src="http://oniet.ubp.edu.ar/wp-content/uploads/2018/10/logoonietubp.png"
             style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100 }}
           />
-        </div>
+        </div> */}
 
         <Typography variant="h5" style={{ textAlign: "center" }}>
           Debe iniciar sesion para continuar

@@ -229,7 +229,7 @@ class Inscripcion extends React.Component {
     return (
       <MiPagina
         cargando={cargando || false}
-        toolbarTitulo="Inscripción a una actividad"
+        toolbarSubtitulo="Inscripción a una actividad"
         toolbarLeftIconVisible={true}
         toolbarLeftIconClick={this.onBotonBackClick}
       >
