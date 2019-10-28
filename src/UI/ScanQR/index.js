@@ -64,7 +64,6 @@ class ScanQR extends React.Component {
         }
       });
 
-      console.log(camaras);
       if (camaras.length == 0) {
         this.setState({ cargando: false, error: "Su dispositivo no tiene ninguna camara" });
         return;
@@ -96,7 +95,7 @@ class ScanQR extends React.Component {
               this.props.redirect("/Inscripcion/" + codigo);
             }
           }
-        } catch (ex) {}
+        } catch (ex) { }
       }, 500);
     } catch (ex) {
       this.setState({

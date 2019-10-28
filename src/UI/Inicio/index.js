@@ -13,8 +13,6 @@ import Typography from "@material-ui/core/Typography";
 import Card from "@material-ui/core/Card";
 import Button from "@material-ui/core/Button";
 import Fab from "@material-ui/core/Fab";
-import memoize from "memoize-one";
-import _ from "lodash";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
@@ -27,9 +25,10 @@ import { ButtonBase } from "@material-ui/core";
 const mapStateToProps = state => {
   return {
     usuario: state.Usuario.usuario,
-    data: state.Data.data,
-    dataCargando: state.Data.cargando,
-    dataReady: state.Data.ready
+    inscripciones: state.Usuario.inscripciones,
+    eventos: state.Eventos.data,
+    eventosCargando: state.Eventos.cargando,
+    eventosReady: state.Eventos.ready,
   };
 };
 
@@ -46,6 +45,9 @@ class Inicio extends React.Component {
     this.state = {};
   }
 
+  componentDidMount() {
+  }
+
   onEventoClick = data => {
     this.props.redirect("/Evento/" + data.id);
   };
@@ -54,69 +56,71 @@ class Inicio extends React.Component {
     this.props.redirect("/ScanQR");
   };
 
-  getEventos = memoize(data => {
-    data = data || {};
-    let eventos = data.eventos || [];
-    return _.filter(eventos, x => x.inscripto == true);
-  });
-
   render() {
-    const { classes, data, dataReady, dataCargando } = this.props;
-    const eventos = this.getEventos(data);
+    const { classes, eventos, eventosReady, eventosCargando } = this.props;
 
     return (
-      <MiPagina cargando={dataCargando || false} toolbarLeftIconVisible={false}>
-        {/* Sin eventos */}
-        {dataReady == true && eventos != undefined && eventos.length == 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              justifyItems: "center",
-              flexDirection: "column"
-            }}
-          >
-            <Typography variant="h5" style={{ textAlign: "center", margin: 16, marginBottom: 32, marginTop: 32 }}>
-              Escanéa alguno de los codigos QR para empezar
-            </Typography>
+      <MiPagina cargando={eventosCargando || false} toolbarLeftIconVisible={false}>
 
-            <Button variant="contained" color="primary" onClick={this.onBotonScanClick}>
-              Escanear
-            </Button>
-          </div>
+        {eventosReady && (
+
+          <React.Fragment>
+
+            {/* Sin eventos */}
+            {(eventos == undefined || eventos.length == 0) && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  justifyItems: "center",
+                  flexDirection: "column"
+                }}
+              >
+                <Typography variant="h5" style={{ textAlign: "center", margin: 16, marginBottom: 32, marginTop: 32 }}>
+                  Escanéa alguno de los codigos QR para empezar
+                </Typography>
+
+                <Button variant="contained" color="primary" onClick={this.onBotonScanClick}>
+                  Escanear
+                </Button>
+              </div>
+            )}
+
+            {/* Con eventos */}
+            {eventos != undefined && eventos.length != 0 && (
+              <div>
+                <Typography variant="subtitle2" style={{ marginBottom: 16, marginLeft: 4 }}>
+                  Eventos disponibles
+                </Typography>
+                {/* Listado de eventos */}
+                {eventos &&
+                  eventos.map((evento, index) => {
+                    return (
+                      <Card
+                        key={index}
+                        className={classes.evento}
+                        onClick={() => {
+                          this.onEventoClick(evento);
+                        }}
+                      >
+                        <ButtonBase className="content">
+                          <Typography>{evento.nombre}</Typography>
+                        </ButtonBase>
+                      </Card>
+                    );
+                  })}
+
+                {/* Boton escanear */}
+                <Fab color="primary" onClick={this.onBotonScanClick} style={{ position: "absolute", right: 16, bottom: 16 }}>
+                  <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} color="white" />
+                </Fab>
+              </div>
+            )}
+
+          </React.Fragment>
         )}
 
-        {/* Con eventos */}
-        {dataReady == true && eventos != undefined && eventos.length != 0 && (
-          <div>
-            <Typography variant="subtitle2" style={{ marginBottom: 16, marginLeft: 4 }}>
-              Eventos disponibles
-            </Typography>
-            {/* Listado de eventos */}
-            {eventos &&
-              eventos.map((evento, index) => {
-                return (
-                  <Card
-                    key={index}
-                    className={classes.evento}
-                    onClick={() => {
-                      this.onEventoClick(evento);
-                    }}
-                  >
-                    <ButtonBase className="content">
-                      <Typography>{evento.nombre}</Typography>
-                    </ButtonBase>
-                  </Card>
-                );
-              })}
-
-            {/* Boton escanear */}
-            <Fab color="primary" onClick={this.onBotonScanClick} style={{ position: "absolute", right: 16, bottom: 16 }}>
-              <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} color="white" />
-            </Fab>
-          </div>
-        )}
       </MiPagina>
     );
   }

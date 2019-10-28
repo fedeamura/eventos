@@ -19,10 +19,7 @@ import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario,
-    data: state.Data.data,
-    dataReady: state.Data.ready,
-    dataCargando: state.Data.cargando
+    usuario: state.Usuario.usuario
   };
 };
 
@@ -43,25 +40,16 @@ class Inscripcion extends React.Component {
   }
 
   componentDidMount() {
-    if (this.props.dataReady == true) {
-      this.inscribir();
-    }
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.dataReady == true && this.props.dataReady == false) {
-      setTimeout(() => {
-        this.inscribir();
-      }, 300);
-    }
+    this.inscribir();
   }
 
   inscribir = async () => {
     try {
+
+      const { codigo } = this.state;
       this.setState({ cargando: true });
 
       var db = window.firebase.firestore();
-      const codigo = this.state.codigo;
       if (codigo == undefined || codigo == "" || codigo.split("_").length != 2) {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({
@@ -77,50 +65,10 @@ class Inscripcion extends React.Component {
         return;
       }
 
-      let idEvento = this.state.codigo.split("_")[0].toLowerCase();
-      let idActividad = this.state.codigo.split("_")[1].toLowerCase();
+      let idEvento = codigo.split("_")[0].toLowerCase();
+      let idActividad = codigo.split("_")[1].toLowerCase();
 
-      const { data, usuario } = this.props;
-
-      //Busco el evento
-      let eventos = data.eventos || [];
-      let evento = _.find(eventos, x => x.id == idEvento);
-
-      //El evento no existe
-      if (evento == undefined) {
-        this.setState({ cargando: false });
-        this.mostrarDialogoMensaje({
-          autoCerrar: false,
-          mensaje: "El código QR escaneado es inválido",
-          botonSiMensaje: "Volver",
-          onBotonSiClick: () => {
-            setTimeout(() => {
-              this.props.redirect("/");
-            }, 300);
-          }
-        });
-        return;
-      }
-
-      //Busco la actividad
-      let actividades = evento.actividades || [];
-      let actividad = _.find(actividades, x => x.id == idActividad);
-
-      //La activdad no existe
-      if (actividad == undefined) {
-        this.setState({ cargando: false });
-        this.mostrarDialogoMensaje({
-          autoCerrar: false,
-          mensaje: "El código QR escaneado es inválido",
-          botonSiMensaje: "Volver",
-          onBotonSiClick: () => {
-            setTimeout(() => {
-              this.props.redirect("/");
-            }, 300);
-          }
-        });
-        return;
-      }
+      const { usuario } = this.props;
 
       //Inscribo
       await db
@@ -135,9 +83,9 @@ class Inscripcion extends React.Component {
               photoURL: usuario.photoURL,
               uid: usuario.uid
             },
-            [evento.id]: {
+            [idEvento]: {
               inscripto: true,
-              [actividad.id]: true
+              [idActividad]: true
             }
           },
           { merge: true }

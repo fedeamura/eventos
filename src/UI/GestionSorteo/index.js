@@ -5,10 +5,12 @@ import styles from "./styles";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
+import themeData from '../../theme';
 
 //REDUX
 import { connect } from "react-redux";
 import { push } from "connected-react-router";
+import { setEventos as setEventosGestion, setInit as setEventosGestionInit } from '@Redux/Actions/gestion';
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
@@ -24,9 +26,7 @@ import {
   Avatar,
   Fab,
   Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogActions
+  DialogContent
 } from "@material-ui/core";
 import Lottie from "react-lottie";
 import * as animSorteoCargando from "@Resources/animaciones/sorteo_cargando.json";
@@ -35,6 +35,9 @@ import * as animSorteoGanador from "@Resources/animaciones/sorteo_ganador.json";
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
+
+//Rules
+import Rules_Evento from '../../Rules/Rules_Evento';
 
 const lottieCargando = {
   loop: true,
@@ -57,19 +60,26 @@ const lottieGanador = {
 const mapStateToProps = state => {
   return {
     usuario: state.Usuario.usuario,
-    data: state.Data.data,
-    dataReady: state.Data.ready,
-    dataCargando: state.Data.cargando
+    eventos: state.Gestion.eventos,
+    eventosCargando: state.Gestion.eventosCargando,
+    eventosReady: state.Gestion.eventosReady,
+    ganadores: state.Eventos.ganadores,
   };
 };
 
 const mapDispatchToProps = dispatch => ({
   redirect: url => {
     dispatch(push(url));
+  },
+  setEventosGestion: data => {
+    dispatch(setEventosGestion(data));
+  },
+  setEventosGestionInit: () => {
+    dispatch(setEventosGestionInit());
   }
 });
 
-class Sorteo extends React.Component {
+class GestionSorteo extends React.Component {
   constructor(props) {
     super(props);
 
@@ -81,14 +91,30 @@ class Sorteo extends React.Component {
   }
 
   componentDidMount() {
-    if (this.props.dataReady == true) {
+    Rules_Evento.escucharGanadores(this.state.idEvento);
+    if (this.props.ganadores && this.props.ganadores[this.state.idEvento]) {
       this.init();
     }
   }
 
+  componentWillUnmount() {
+    Rules_Evento.dejarDeEscucharGanadores();
+  }
+
   componentWillReceiveProps(nextProps) {
-    if (nextProps.dataReady != this.props.dataReady && nextProps.dataReady == true) {
-      this.init();
+    const idEventoNuevo = nextProps.match.params.idEvento;
+    const idEventoActual = this.state.idEvento;
+    if (idEventoNuevo != idEventoActual) {
+      window.location.reload();
+      return;
+    }
+
+    if (nextProps.ganadores != this.props.ganadores) {
+      if (nextProps.ganadores && nextProps.ganadores[this.state.idEvento]) {
+        setTimeout(() => {
+          this.init();
+        }, 300);
+      }
     }
   }
 
@@ -99,24 +125,33 @@ class Sorteo extends React.Component {
 
       var db = window.firebase.firestore();
 
-      let admins = await db
-        .collection("info")
-        .doc("admins")
-        .get();
+      if (this.props.eventos == undefined) {
+        this.props.setEventosGestionInit();
 
-      const tienePermiso = admins.data().data[this.props.usuario.uid];
-      if (tienePermiso != true) {
+        const db = window.firebase.firestore();
+        let data = await db
+          .collection('eventos')
+          .where('roles.' + this.props.usuario.uid, '>=', 2)
+          .get();
+
+        let eventos = data.docs.map(x => x.data());
+        this.props.setEventosGestion(eventos);
+      }
+
+
+      const evento = _.find(this.props.eventos, (x) => x.id == idEvento);
+      if (evento == undefined) {
         this.mostrarDialogoMensaje({
           autoCerrar: false,
           mensaje: "No tiene el permiso necesario para realizar esta operación",
           onBotonSiClick: () => {
             setTimeout(() => {
-              this.props.redirect("/");
+              this.props.redirect("/Gestion");
             }, 300);
           }
         });
 
-        this.setState({ cargando: false, sinPermiso: tienePermiso != true, ready: true });
+        this.setState({ cargando: false, sinPermiso: false, ready: true });
         return;
       }
 
@@ -143,16 +178,20 @@ class Sorteo extends React.Component {
           cantidad
         });
       });
+
       this.setState({ participantes: [...participantes], cargando: false, ready: true });
-    } catch (ex) {}
+    } catch (ex) {
+      let mensaje = typeof ex === 'object' ? ex.message : ex;
+      console.log('Error', mensaje);
+    }
   };
 
   onSorteoClick = async () => {
     try {
-      const { idEvento, participantes, ausentes } = this.state;
-      const { data } = this.props;
+      const { idEvento, participantes, ausentes, sinPermiso } = this.state;
+      const { eventos, ganadores } = this.props;
 
-      const evento = this.getEvento(data, idEvento);
+      const evento = this.getEvento(eventos, idEvento);
       if (evento == undefined) {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({ mensaje: "Sin evento" });
@@ -164,7 +203,7 @@ class Sorteo extends React.Component {
         return;
       }
 
-      let listaGanadores = this.getGanadores(evento);
+      let listaGanadores = this.getGanadores(ganadores, idEvento, sinPermiso);
       if (listaGanadores == undefined) {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({ mensaje: "Sin ganadores" });
@@ -193,18 +232,29 @@ class Sorteo extends React.Component {
       var db = window.firebase.firestore();
       await db
         .collection("info")
-        .doc("eventos")
+        .doc("ganadores")
+        .collection('porEvento')
+        .doc(idEvento)
         .update({
-          [`info.${idEvento}.ganadores.${ganador.uid}`]: {
+          [`ganadores.${ganador.uid}`]: {
             uid: ganador.uid,
             nombre: ganador.nombre,
             photoURL: ganador.photoURL
           }
         });
 
-      this.setState({ dialogoSorteoCargandoVisible: false, dialogoSorteoGanadorVisible: true, dialogoSorteoGanadorData: ganador });
+      this.setState({
+        dialogoSorteoCargandoVisible: false,
+        dialogoSorteoGanadorVisible: true,
+        dialogoSorteoGanadorData: ganador
+      });
     } catch (ex) {
-      this.setState({ cargando: false });
+      this.setState({
+        cargando: false,
+        dialogoSorteoCargandoVisible: false,
+        dialogoSorteoGanadorVisible: false,
+        dialogoSorteoVisible: false
+      });
 
       let mensaje = typeof ex === "object" ? ex.message : ex;
       this.mostrarDialogoMensaje({ mensaje });
@@ -250,9 +300,11 @@ class Sorteo extends React.Component {
             var db = window.firebase.firestore();
             await db
               .collection("info")
-              .doc("eventos")
+              .doc("ganadores")
+              .collection('porEvento')
+              .doc(idEvento)
               .update({
-                [`info.${idEvento}.ganadores.${ganador.uid}`]: window.firebase.firestore.FieldValue.delete()
+                [`ganadores.${ganador.uid}`]: window.firebase.firestore.FieldValue.delete()
               });
             this.setState({ cargando: false, ausentes: [...this.state.ausentes, ganador] });
           } catch (ex) {
@@ -283,12 +335,10 @@ class Sorteo extends React.Component {
   };
 
   onBotonBackClick = () => {
-    this.props.redirect("/Evento/" + this.state.idEvento);
+    this.props.redirect("/Gestion/Panel/" + this.state.idEvento);
   };
 
-  getEvento = memoize((data, idEvento) => {
-    data = data || {};
-    let eventos = data.eventos || [];
+  getEvento = memoize((eventos, idEvento) => {
     return _.find(eventos, x => x.id == idEvento);
   });
 
@@ -312,36 +362,36 @@ class Sorteo extends React.Component {
       }
     });
 
+    console.log(listaFinal);
+
     return listaFinal;
   });
 
-  getGanadores = memoize((evento, sinPermiso) => {
+  getGanadores = memoize((ganadores, idEvento, sinPermiso) => {
     if (sinPermiso == true) return [];
-    if (evento == undefined) return undefined;
-    let g = [];
-    Object.keys(evento.ganadores || {}).forEach(key => {
-      let data = evento.ganadores[key];
-      if (data != undefined) {
-        g.push(data);
-      }
-    });
+    if (ganadores == undefined) return undefined;
 
-    return g;
+    return ganadores[idEvento] || [];
   });
 
   getTheme = memoize(color => {
-    if (color == undefined) return createMuiTheme({});
+    if (color == undefined) return createMuiTheme(themeData);
     return createMuiTheme({
+      ...themeData,
       palette: {
+        ...themeData.palette,
         primary: {
+          ...themeData.palette.main,
           main: color
         },
         secondary: {
+          ...themeData.palette.secondary,
           main: color
         }
       }
     });
   });
+
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -389,16 +439,16 @@ class Sorteo extends React.Component {
 
   render() {
     const { idEvento, cargando, participantes, ausentes, sinPermiso, ready } = this.state;
-    const { data, dataCargando, dataReady, classes } = this.props;
+    const { eventos, eventosCargando, ganadores } = this.props;
 
     let evento, listaGanadores, listaParticipantes;
     if (ready == true) {
-      evento = this.getEvento(data, idEvento);
-      listaGanadores = this.getGanadores(evento, sinPermiso);
+      evento = this.getEvento(eventos, idEvento);
+      listaGanadores = this.getGanadores(ganadores, idEvento, sinPermiso);
       listaParticipantes = this.getParticipantes(participantes, listaGanadores, ausentes, sinPermiso);
     }
 
-    let paginaCargando = dataCargando;
+    let paginaCargando = eventosCargando;
     if (paginaCargando == false) {
       if (cargando == true) {
         paginaCargando = true;
@@ -438,27 +488,10 @@ class Sorteo extends React.Component {
                       Sortear
                     </Fab>
                   </div>
-
-                  {/* <Card style={{ borderRadius: 16 }}>
-                    <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
-                      Participantes
-                    </Typography>
-                    <List>
-                      {listaParticipantes.map((x, key) => {
-                        return (
-                          <ListItem button key={key}>
-                            <ListItemAvatar>
-                              <Avatar src={x.photoURL}></Avatar>
-                            </ListItemAvatar>
-                            <ListItemText>{x.nombre}</ListItemText>
-                          </ListItem>
-                        );
-                      })}
-                    </List>
-                  </Card> */}
                 </React.Fragment>
               )}
 
+              {/* Ganadores */}
               {listaGanadores.length != 0 && (
                 <Card style={{ borderRadius: 16, marginBottom: 32 }}>
                   <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
@@ -485,6 +518,7 @@ class Sorteo extends React.Component {
                 </Card>
               )}
 
+              {/* Ausentes */}
               {ausentes.length != 0 && (
                 <Card style={{ borderRadius: 16, marginBottom: 32 }}>
                   <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
@@ -510,6 +544,29 @@ class Sorteo extends React.Component {
                   </List>
                 </Card>
               )}
+
+              {/* Participantes */}
+              {listaParticipantes && listaParticipantes.length != 0 && (
+                <Card style={{ borderRadius: 16 }}>
+                  <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
+                    Participantes
+                    </Typography>
+                  <List>
+                    {listaParticipantes.map((x, key) => {
+                      return (
+                        <ListItem button key={key}>
+                          <ListItemAvatar>
+                            <Avatar src={x.photoURL}></Avatar>
+                          </ListItemAvatar>
+                          <ListItemText>{x.nombre}</ListItemText>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Card>
+              )}
+
+
             </React.Fragment>
           )}
 
@@ -599,7 +656,7 @@ class Sorteo extends React.Component {
   }
 }
 
-let componente = Sorteo;
+let componente = GestionSorteo;
 componente = withStyles(styles)(componente);
 componente = connect(
   mapStateToProps,

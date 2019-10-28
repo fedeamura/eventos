@@ -13,8 +13,8 @@ import { AnimatedSwitch } from "react-router-transition";
 
 //REDUX
 import { connect } from "react-redux";
-import { login, cerrarSesion } from "@Redux/Actions/usuario";
-import { setData, setCargando, setReady } from "@Redux/Actions/data";
+import { login, cerrarSesion, setInscripciones } from "@Redux/Actions/usuario";
+import { setEventos as setEventos, setInit as setEventosInit } from "@Redux/Actions/eventos";
 
 //Componentes
 import _ from "lodash";
@@ -24,12 +24,19 @@ import PanelLogin from "@UI/_PanelLogin";
 import asyncComponent from "./AsyncComponent";
 import CircularProgress from "@material-ui/core/CircularProgress";
 
+//Rules
+import Rules_Evento from '../Rules/Rules_Evento';
+
 const Inicio = asyncComponent(() => import("@UI/Inicio"));
 const Inscripcion = asyncComponent(() => import("@UI/Inscripcion"));
 const Evento = asyncComponent(() => import("@UI/Evento"));
 const Actividad = asyncComponent(() => import("@UI/Actividad"));
-const Sorteo = asyncComponent(() => import("@UI/Sorteo"));
 const ScanQR = asyncComponent(() => import("@UI/ScanQR"));
+const Gestion = asyncComponent(() => import("@UI/Gestion"));
+const GestionPanel = asyncComponent(() => import("@UI/GestionPanel"));
+const GestionSorteo = asyncComponent(() => import("@UI/GestionSorteo"));
+const GestionInscriptos = asyncComponent(() => import("@UI/GestionInscriptos"));
+const GestionMensajes = asyncComponent(() => import("@UI/GestionMensajes"));
 const Pagina404 = asyncComponent(() => import("@UI/_Pagina404"));
 
 //Redux
@@ -46,14 +53,14 @@ const mapDispatchToProps = dispatch => ({
   cerrarSesion: () => {
     dispatch(cerrarSesion());
   },
-  setData: data => {
-    dispatch(setData(data));
+  setInscripciones: data => {
+    dispatch(setInscripciones(data));
   },
-  setReady: data => {
-    dispatch(setReady(data));
+  setEventos: (data) => {
+    dispatch(setEventos(data));
   },
-  setCargando: data => {
-    dispatch(setCargando(data));
+  setEventosInit: () => {
+    dispatch(setEventosInit());
   }
 });
 
@@ -62,7 +69,8 @@ class App extends React.Component {
     super(props);
 
     this.state = {
-      cargandoUsuario: true
+      cargandoUsuario: true,
+      cargandoInscripciones: true,
     };
   }
 
@@ -78,6 +86,7 @@ class App extends React.Component {
     }
 
     this.unsubscribeFirebaseAuth = window.firebase.auth().onAuthStateChanged(user => {
+      this.setState({ cargandoInscripciones: false });
       if (user) {
         this.props.login(this.convertirFirebaseUser(user));
         this.onLogin();
@@ -92,115 +101,64 @@ class App extends React.Component {
 
   componentWillUnmount() {
     this.unsubscribeFirebaseAuth && this.unsubscribeFirebaseAuth();
-    this.listenerDataEventos && this.listenerDataEventos();
-    this.listenerDataUsuario && this.listenerDataUsuario();
+    Rules_Evento.dejarDeEscucharGanadores();
+    Rules_Evento.dejarDeEscucharMensajes();
   }
 
-  onLogin = () => {
+  onLogin = async () => {
     const db = window.firebase.firestore();
-    this.listenerDataEventos && this.listenerDataEventos();
-    this.listenerDataUsuario && this.listenerDataUsuario();
+    const { usuario } = this.props;
 
-    this.props.setCargando(true);
-    this.listenerDataEventos = db
-      .collection("info")
-      .doc("eventos")
-      .onSnapshot(doc => {
-        if (!doc.exists) {
-          console.log("Eventos", {});
-          this.props.setReady(true);
-          this.props.setCargando(false);
-          this.props.setData({});
-          return;
-        }
+    this.props.setEventosInit();
+    let dataEventos = await db
+      .collection('eventos')
+      .get();
+    let eventos = dataEventos.docs.map((x) => x.data());
 
-        let data = doc.data();
-        if (data == undefined) {
-          console.log("Eventos", {});
-          this.props.setReady(true);
-          this.props.setCargando(false);
-          this.props.setData({});
-          return;
-        }
+    this.listenerInscripciones && this.listenerInscripciones();
+    this.listenerInscripciones = db
+      .collection('info')
+      .doc('inscripciones')
+      .collection('porUsuario')
+      .doc(usuario.uid)
+      .onSnapshot((data) => {
 
-        //Obtengo los eventos
-        let map = data.info || {};
-        let eventos = Object.keys(map).map(key => {
-          let data = map[key];
+        let info = data.data() || {};
+        let inscripciones = {};
+        Object.keys(info).forEach((a) => {
+          if (a != 'usuario') {
+            inscripciones[a] = [];
 
-          //Formateo las actividades
-          let actividades = [];
-          Object.keys(data.actividades || {}).map(key => {
-            let actividad = (data.actividades || {})[key];
-            actividades.push(actividad);
-          });
-
-          data.actividades = actividades;
-          return data;
-        });
-
-        const { usuario } = this.props;
-        //Obtengo la info del usuario
-        this.listenerDataUsuario && this.listenerDataUsuario();
-        this.listenerDataUsuario = db
-          .collection("info")
-          .doc("inscripciones")
-          .collection("porUsuario")
-          .doc(usuario.uid)
-          .onSnapshot(docUsuario => {
-            //La info del usuario no existe
-            if (!docUsuario.exists) {
-              console.log("Eventos", eventos);
-              this.props.setReady(true);
-              this.props.setCargando(false);
-              this.props.setData({
-                eventos
-              });
-              return;
-            }
-
-            //La info del usuario no existe
-            let dataUsuario = docUsuario.data();
-            if (dataUsuario == undefined) {
-              console.log("Eventos", eventos);
-              this.props.setReady(true);
-              this.props.setCargando(false);
-              this.props.setData({
-                eventos
-              });
-              return;
-            }
-
-            //Proceso la info del usuario
-            Object.keys(dataUsuario).forEach(keyEvento => {
-              let inscripcionEvento = dataUsuario[keyEvento];
-              let evento = _.find(eventos, x => x.id == keyEvento);
-              if (evento && inscripcionEvento && Object.keys(inscripcionEvento).length != 0) {
-                evento.inscripto = true;
-
-                Object.keys(inscripcionEvento).forEach(keyActividad => {
-                  let actividades = evento.actividades || [];
-                  let actividad = _.find(actividades, x => x.id == keyActividad);
-                  if (actividad) {
-                    actividad.inscripto = true;
-                  }
-                });
+            Object.keys(info[a]).forEach((b) => {
+              if (b != 'inscripto') {
+                inscripciones[a].push(b);
               }
             });
+          }
+        });
 
-            this.props.setReady(true);
-            this.props.setCargando(false);
-            this.props.setData({
-              eventos
-            });
-          });
+        this.props.setInscripciones(inscripciones);
+        const eventosInscriptos = Object.keys(inscripciones);
+
+        let infoFinal = [];
+        eventos.forEach((evento) => {
+          if (eventosInscriptos.indexOf(evento.id) != -1) {
+            infoFinal.push(evento);
+          }
+        });
+
+        this.props.setEventos(infoFinal);
+        this.setState({ cargandoInscripciones: false });
+      }, () => {
+        this.props.setInscripciones({});
+        this.props.setEventos([]);
+        this.setState({ cargandoInscripciones: false });
       });
-  };
+  }
 
   onLogout = () => {
-    this.listenerDataEventos && this.listenerDataEventos();
-    this.listenerDataUsuario && this.listenerDataUsuario();
-  };
+    this.listenerInscripciones && this.listenerInscripciones();
+  }
 
   convertirFirebaseUser = user => {
     return {
@@ -213,19 +171,22 @@ class App extends React.Component {
   };
 
   render() {
-    const { classes } = this.props;
+    const { cargandoUsuario, cargandoInscripciones } = this.state;
+    const { classes, usuario } = this.props;
+
+    const cargando = cargandoUsuario == true || cargandoInscripciones == true;
 
     return (
       <div className={classes.root}>
         <CssBaseline />
 
-        {this.state.cargandoUsuario == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
+        {cargando == true && <React.Fragment>{this.renderCargando()}</React.Fragment>}
 
-        {this.state.cargandoUsuario == false && (
+        {cargando == false && (
           <React.Fragment>
-            {this.props.usuario == undefined && <PanelLogin />}
+            {usuario == undefined && <PanelLogin />}
 
-            {this.props.usuario != undefined && <React.Fragment>{this.renderContent()}</React.Fragment>}
+            {usuario != undefined && <React.Fragment>{this.renderContent()}</React.Fragment>}
           </React.Fragment>
         )}
       </div>
@@ -248,7 +209,6 @@ class App extends React.Component {
     return (
       <main className={classes.content}>
         <AnimatedSwitch atEnter={{ opacity: 0 }} atLeave={{ opacity: 0 }} atActive={{ opacity: 1 }} className={"switch-wrapper"}>
-          {/* <Redirect exact from="/" to="Evento/oniet" /> */}
 
           <Route exact path={`${base}/`} component={Inicio} />
 
@@ -260,7 +220,16 @@ class App extends React.Component {
 
           <Route exact path={`${base}/Actividad/:idEvento/:idActividad`} component={Actividad} />
 
-          <Route exact path={`${base}/Sorteo/:idEvento`} component={Sorteo} />
+          {/* Gestion */}
+          <Route exact path={`${base}/Gestion`} component={Gestion} />
+
+          <Route exact path={`${base}/Gestion/Panel/:idEvento`} component={GestionPanel} />
+
+          <Route exact path={`${base}/Gestion/Sorteo/:idEvento`} component={GestionSorteo} />
+
+          <Route exact path={`${base}/Gestion/Inscriptos/:idEvento`} component={GestionInscriptos} />
+
+          <Route exact path={`${base}/Gestion/Mensajes/:idEvento`} component={GestionMensajes} />
 
           <Route component={Pagina404} />
         </AnimatedSwitch>

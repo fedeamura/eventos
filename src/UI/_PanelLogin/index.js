@@ -13,6 +13,8 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 //Mis componentes
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
+import logo from '../../_Resources/imagenes/logo.png';
+
 class PanelLogin extends React.Component {
   constructor(props) {
     super(props);
@@ -20,7 +22,7 @@ class PanelLogin extends React.Component {
     this.state = {};
   }
 
-  componentDidMount() {}
+  componentDidMount() { }
 
   onBotonGoogleClick = async () => {
     try {
@@ -134,12 +136,12 @@ class PanelLogin extends React.Component {
       <div className={classes.root}>
         {this.state.error && <Typography>{this.state.error}</Typography>}
 
-        {/* <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32 }}>
+        <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32 }}>
           <img
-            src="http://oniet.ubp.edu.ar/wp-content/uploads/2018/10/logoonietubp.png"
+            src={logo}
             style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100 }}
           />
-        </div> */}
+        </div>
 
         <Typography variant="h5" style={{ textAlign: "center" }}>
           Debe iniciar sesion para continuar

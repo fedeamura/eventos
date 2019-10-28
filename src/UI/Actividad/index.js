@@ -4,6 +4,7 @@ import React from "react";
 import styles from "./styles";
 import { withStyles } from "@material-ui/core/styles";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
+import themeData from '../../theme';
 
 //REDUX
 import { connect } from "react-redux";
@@ -20,9 +21,10 @@ import MiPagina from "@UI/_MiPagina";
 const mapStateToProps = state => {
   return {
     usuario: state.Usuario.usuario,
-    data: state.Data.data,
-    dataReady: state.Data.ready,
-    dataCargando: state.Data.cargando
+    eventos: state.Eventos.data,
+    eventosReady: state.Eventos.ready,
+    eventosCargando: state.Eventos.cargando,
+    inscripciones: state.Usuario.inscripciones
   };
 };
 
@@ -59,29 +61,38 @@ class Actividad extends React.Component {
   };
 
   getEvento = memoize((data, idEvento) => {
-    data = data || {};
-    let eventos = data.eventos || [];
-    return _.find(eventos, x => x.id == idEvento);
+    if (data == undefined || idEvento == undefined) return undefined;
+    return _.find(data, (x) => x.id == idEvento);
   });
 
   getActividad = memoize((data, idEvento, idActividad) => {
-    data = data || {};
-    let eventos = data.eventos || [];
-    let evento = _.find(eventos, x => x.id == idEvento);
+    let evento = this.getEvento(data, idEvento);
     if (evento == undefined) return undefined;
 
     let actividades = evento.actividades || [];
     return _.find(actividades, x => x.id == idActividad);
   });
 
+  estaInscriptoEnActividad = memoize((inscripciones, idEvento, idActividad) => {
+    if (inscripciones == undefined || idEvento == undefined || idActividad == undefined) return false;
+
+    let inscripcionesDeEvento = inscripciones[idEvento];
+    if (inscripcionesDeEvento == undefined) return false;
+    return inscripcionesDeEvento.indexOf(idActividad) != -1;
+  });
+
   getTheme = memoize(color => {
-    if (color == undefined) return createMuiTheme({});
+    if (color == undefined) return createMuiTheme(themeData);
     return createMuiTheme({
+      ...themeData,
       palette: {
+        ...themeData.palette,
         primary: {
+          ...themeData.palette.main,
           main: color
         },
         secondary: {
+          ...themeData.palette.secondary,
           main: color
         }
       }
@@ -89,24 +100,25 @@ class Actividad extends React.Component {
   });
 
   render() {
-    const { usuario, data, dataCargando, dataReady } = this.props;
+    const { eventos, eventosReady, eventosCargando, inscripciones } = this.props;
     const { idEvento, idActividad } = this.state;
 
-    const evento = this.getEvento(data, idEvento);
-    const actividad = this.getActividad(data, idEvento, idActividad);
+    const evento = this.getEvento(eventos, idEvento);
+    const actividad = this.getActividad(eventos, idEvento, idActividad);
+    const estaInscripto = this.estaInscriptoEnActividad(inscripciones, idEvento, idActividad);
 
     const color = evento && evento.color;
-    let theme = this.getTheme(color);
+    const theme = this.getTheme(color);
 
     return (
       <MuiThemeProvider theme={theme}>
         <MiPagina
-          cargando={dataCargando || false}
+          cargando={eventosCargando || false}
           toolbarSubtitulo={evento ? evento.nombre : "..."}
           toolbarLeftIconVisible={true}
           toolbarLeftIconClick={this.onBotonBackClick}
         >
-          {dataReady == true && (
+          {eventosReady == true && (
             <React.Fragment>
               {/* La actividad no existe */}
               {actividad == undefined && <Typography>La actividad no existe </Typography>}
@@ -140,9 +152,9 @@ class Actividad extends React.Component {
                   {/* Inscripto  */}
                   <div style={{ marginTop: 16 }} />
 
-                  {actividad.inscripto == true && <Typography>Te inscribiste a esta actividad</Typography>}
+                  {estaInscripto == true && <Typography>Te inscribiste a esta actividad</Typography>}
 
-                  {actividad.inscripto != true && <Typography>No estás inscripto en esta actividad</Typography>}
+                  {estaInscripto != true && <Typography>No estás inscripto en esta actividad</Typography>}
                 </React.Fragment>
               )}
             </React.Fragment>

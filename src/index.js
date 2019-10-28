@@ -6,6 +6,7 @@ import { unregister } from "./registerServiceWorker";
 
 //Theme
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
+import themeData from './theme';
 
 //Date pickers
 import DateFnsUtils from "@date-io/date-fns";
@@ -25,22 +26,7 @@ import AppHot from "./indexHot";
 const store = configureStore(/* provide initial state if any */);
 unregister();
 
-const theme = createMuiTheme({
-  typography: {
-    useNextVariants: true
-  },
-  palette: {
-    primary: {
-      main: "#861833"
-    },
-    secondary: {
-      main: "#861833"
-    },
-    background: {
-      default: "#eee"
-    }
-  }
-});
+const theme = createMuiTheme(themeData);
 
 let MiApp = () => (
   <Provider store={store}>
@@ -55,3 +41,5 @@ let MiApp = () => (
 );
 
 ReactDOM.render(<MiApp />, document.getElementById("root"));
+
+export const MiStore = store;

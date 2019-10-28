@@ -1,12 +1,12 @@
-import { USUARIO_LOGIN, USUARIO_CERRAR_SESION } from "@Redux/Constants/index";
+import {
+  USUARIO_LOGIN,
+  USUARIO_CERRAR_SESION,
+  USUARIO_INSCRIPCIONES_SET
+} from "@Redux/Constants/index";
 
 const initialState = {
   usuario: undefined,
-  // usuario: {
-  //   uid: 'Fdl03qs8YcXnhUCVLz7LHuKHUoQ2',
-  //   nombre: 'Federico Amura',
-  //   photoURL: 'https://lh3.googleusercontent.com/a-/AAuE7mCoUPencicspA9_22Sb9OMneSJN1mrszRaR79G7a9E'
-  // }
+  inscripciones: undefined,
 };
 
 const reducer = (state = initialState, action) => {
@@ -19,6 +19,14 @@ const reducer = (state = initialState, action) => {
       sessionStorage.setItem("usuario", undefined);
       return { ...state, usuario: undefined };
     }
+
+    case USUARIO_INSCRIPCIONES_SET: {
+      return { ...state, inscripciones: action.payload };
+    }
+
+
+
+
     default:
       return state;
   }
