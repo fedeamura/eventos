@@ -5,38 +5,38 @@ import styles from "./styles";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from '../../theme';
+import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
 import { push } from "connected-react-router";
-import { setEventos as setEventosGestion, setInit as setEventosGestionInit } from '@Redux/Actions/gestion';
+import { setEventos as setEventosGestion, setInit as setEventosGestionInit } from "@Redux/Actions/gestion";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
 import Card from "@material-ui/core/Card";
 import Button from "@material-ui/core/Button";
+import List from "@material-ui/core/List";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemText from "@material-ui/core/ListItemText";
+import ListItemAvatar from "@material-ui/core/ListItemAvatar";
+import Avatar from "@material-ui/core/Avatar";
 import memoize from "memoize-one";
 import _ from "lodash";
-import {
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar
-} from "@material-ui/core";
+import { CSVLink } from "react-csv";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
+const CVS_HEADERS = [{ label: "Nombre", key: "nombre" }, { label: "Email", key: "email" }, { label: "Fecha", key: "fecha" }];
 
 const mapStateToProps = state => {
   return {
     usuario: state.Usuario.usuario,
     eventos: state.Gestion.eventos,
     eventosCargando: state.Gestion.eventosCargando,
-    eventosReady: state.Gestion.eventosReady,
+    eventosReady: state.Gestion.eventosReady
   };
 };
 
@@ -86,17 +86,15 @@ class GestionInscriptos extends React.Component {
 
         const db = window.firebase.firestore();
         let data = await db
-          .collection('eventos')
-          .where('roles.' + this.props.usuario.uid, '>=', 2)
+          .collection("eventos")
+          .where("roles." + this.props.usuario.uid, ">=", 2)
           .get();
-
 
         let eventos = data.docs.map(x => x.data());
         this.props.setEventosGestion(eventos);
       }
 
-
-      const evento = _.find(this.props.eventos, (x) => x.id == idEvento);
+      const evento = _.find(this.props.eventos, x => x.id == idEvento);
       if (evento == undefined) {
         this.mostrarDialogoMensaje({
           autoCerrar: false,
@@ -121,44 +119,46 @@ class GestionInscriptos extends React.Component {
 
       let data = docs.docs.map(x => x.data());
 
-      let inscriptosDeEvento = _.filter(data, (x) => {
+      let inscriptosDeEvento = _.filter(data, x => {
         return x[idEvento] != undefined;
       });
 
-      inscriptosDeEvento = inscriptosDeEvento.map((x) => {
-        return x.usuario;
-      })
+      inscriptosDeEvento = inscriptosDeEvento.map(x => {
+        return { ...x.usuario, fecha: x.fecha };
+      });
 
-      inscriptosDeEvento = _.uniq(inscriptosDeEvento, (x) => x.uid);
+      inscriptosDeEvento = _.uniq(inscriptosDeEvento, x => x.uid);
 
       this.setState({ cargando: false, inscriptos: inscriptosDeEvento });
     } catch (ex) {
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
-      console.log('Error', mensaje);
+      let mensaje = typeof ex === "object" ? ex.message : ex;
+      console.log("Error", mensaje);
       this.setState({ cargando: false });
       this.mostrarDialogoMensaje({
         mensaje,
         autoCerrar: false,
         botonNoVisible: true,
-        botonNoMensaje: 'Volver',
+        botonNoMensaje: "Volver",
         onBotonNoClick: () => {
           setTimeout(() => {
             this.onBotonBackClick();
           }, 300);
         },
-        botonSiMensaje: 'Reintentar',
+        botonSiMensaje: "Reintentar",
         onBotonSiClick: () => {
           setTimeout(() => {
             this.init();
           }, 300);
         }
-      })
+      });
     }
   };
 
   onBotonBackClick = () => {
     this.props.redirect("/Gestion/Panel/" + this.state.idEvento);
   };
+
+  onBotonExportarClick = () => {};
 
   getEvento = memoize((eventos, idEvento) => {
     return _.find(eventos, x => x.id == idEvento);
@@ -182,6 +182,16 @@ class GestionInscriptos extends React.Component {
     });
   });
 
+  generarCsv = memoize(data => {
+    if (data == undefined) return undefined;
+    return data.map(x => {
+      return {
+        nombre: x.nombre,
+        email: x.email,
+        fecha: x.fecha ? x.fecha.toDate() : new Date()
+      };
+    });
+  });
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -241,13 +251,15 @@ class GestionInscriptos extends React.Component {
     }
 
     const color = evento && evento.color;
-    let theme = this.getTheme(color);
+    const theme = this.getTheme(color);
+
+    const csvData = this.generarCsv(inscriptos);
 
     return (
       <MuiThemeProvider theme={theme}>
         <MiPagina
           cargando={paginaCargando || false}
-          toolbarTitulo="Sorteo"
+          toolbarTitulo="Inscriptos"
           toolbarLeftIconVisible={true}
           toolbarLeftIconClick={this.onBotonBackClick}
         >
@@ -259,26 +271,39 @@ class GestionInscriptos extends React.Component {
 
               {/* Participantes */}
               {inscriptos && inscriptos.length != 0 && (
-                <Card style={{ borderRadius: 16 }}>
-                  <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
-                    Inscriptos
-                  </Typography>
-                  <List>
-                    {inscriptos.map((x, key) => {
-                      return (
-                        <ListItem button key={key}>
-                          <ListItemAvatar>
-                            <Avatar src={x.photoURL}></Avatar>
-                          </ListItemAvatar>
-                          <ListItemText>{x.nombre}</ListItemText>
-                        </ListItem>
-                      );
-                    })}
-                  </List>
-                </Card>
+                <React.Fragment>
+                  <div style={{ display: "flex", marginBottom: 16 }}>
+                    <div style={{ flex: 1 }} />
+                    <div>
+                      {csvData && (
+                        <CSVLink data={csvData} headers={CVS_HEADERS} filename={"Inscriptos.csv"} style={{ textDecoration: "none" }}>
+                          <Button variant="outlined" size="small" color="primary" style={{ textDecoration: "none" }}>
+                            Descargar
+                          </Button>
+                        </CSVLink>
+                      )}
+                    </div>
+                  </div>
+
+                  <Card style={{ borderRadius: 16 }}>
+                    <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
+                      Inscriptos
+                    </Typography>
+                    <List>
+                      {inscriptos.map((x, key) => {
+                        return (
+                          <ListItem button key={key}>
+                            <ListItemAvatar>
+                              <Avatar src={x.photoURL}></Avatar>
+                            </ListItemAvatar>
+                            <ListItemText>{x.nombre}</ListItemText>
+                          </ListItem>
+                        );
+                      })}
+                    </List>
+                  </Card>
+                </React.Fragment>
               )}
-
-
             </React.Fragment>
           )}
 

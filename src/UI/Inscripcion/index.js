@@ -45,7 +45,6 @@ class Inscripcion extends React.Component {
 
   inscribir = async () => {
     try {
-
       const { codigo } = this.state;
       this.setState({ cargando: true });
 
@@ -78,14 +77,19 @@ class Inscripcion extends React.Component {
         .doc(usuario.uid)
         .set(
           {
+            fecha: new Date(),
             usuario: {
               nombre: usuario.nombre,
+              email: usuario.email,
               photoURL: usuario.photoURL,
               uid: usuario.uid
             },
             [idEvento]: {
               inscripto: true,
-              [idActividad]: true
+              [idActividad]: {
+                inscripto: true,
+                fecha: new Date()
+              }
             }
           },
           { merge: true }

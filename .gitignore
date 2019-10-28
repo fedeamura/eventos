@@ -71,3 +71,6 @@ build/service-worker.js
 build/service-worker.js
 build/index.html
 build/asset-manifest.json
+build/service-worker.js
+build/index.html
+build/asset-manifest.json

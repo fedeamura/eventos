@@ -5,12 +5,12 @@ import styles from "./styles";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from '../../theme';
+import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
 import { push } from "connected-react-router";
-import { setEventos as setEventosGestion, setInit as setEventosGestionInit } from '@Redux/Actions/gestion';
+import { setEventos as setEventosGestion, setInit as setEventosGestionInit } from "@Redux/Actions/gestion";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
@@ -18,16 +18,7 @@ import Card from "@material-ui/core/Card";
 import Button from "@material-ui/core/Button";
 import memoize from "memoize-one";
 import _ from "lodash";
-import {
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
-  Fab,
-  Dialog,
-  DialogContent
-} from "@material-ui/core";
+import { List, ListItem, ListItemText, ListItemAvatar, Avatar, Fab, Dialog, DialogContent } from "@material-ui/core";
 import Lottie from "react-lottie";
 import * as animSorteoCargando from "@Resources/animaciones/sorteo_cargando.json";
 import * as animSorteoGanador from "@Resources/animaciones/sorteo_ganador.json";
@@ -37,7 +28,7 @@ import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
 //Rules
-import Rules_Evento from '../../Rules/Rules_Evento';
+import Rules_Evento from "../../Rules/Rules_Evento";
 
 const lottieCargando = {
   loop: true,
@@ -63,7 +54,7 @@ const mapStateToProps = state => {
     eventos: state.Gestion.eventos,
     eventosCargando: state.Gestion.eventosCargando,
     eventosReady: state.Gestion.eventosReady,
-    ganadores: state.Eventos.ganadores,
+    ganadores: state.Eventos.ganadores
   };
 };
 
@@ -130,16 +121,15 @@ class GestionSorteo extends React.Component {
 
         const db = window.firebase.firestore();
         let data = await db
-          .collection('eventos')
-          .where('roles.' + this.props.usuario.uid, '>=', 2)
+          .collection("eventos")
+          .where("roles." + this.props.usuario.uid, ">=", 2)
           .get();
 
         let eventos = data.docs.map(x => x.data());
         this.props.setEventosGestion(eventos);
       }
 
-
-      const evento = _.find(this.props.eventos, (x) => x.id == idEvento);
+      const evento = _.find(this.props.eventos, x => x.id == idEvento);
       if (evento == undefined) {
         this.mostrarDialogoMensaje({
           autoCerrar: false,
@@ -181,8 +171,8 @@ class GestionSorteo extends React.Component {
 
       this.setState({ participantes: [...participantes], cargando: false, ready: true });
     } catch (ex) {
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
-      console.log('Error', mensaje);
+      let mensaje = typeof ex === "object" ? ex.message : ex;
+      console.log("Error", mensaje);
     }
   };
 
@@ -233,15 +223,21 @@ class GestionSorteo extends React.Component {
       await db
         .collection("info")
         .doc("ganadores")
-        .collection('porEvento')
+        .collection("porEvento")
         .doc(idEvento)
-        .update({
-          [`ganadores.${ganador.uid}`]: {
-            uid: ganador.uid,
-            nombre: ganador.nombre,
-            photoURL: ganador.photoURL
-          }
-        });
+        .set(
+          {
+            ganadores: {
+              [`${ganador.uid}`]: {
+                uid: ganador.uid,
+                nombre: ganador.nombre,
+                photoURL: ganador.photoURL,
+                email: ganador.email
+              }
+            }
+          },
+          { merge: true }
+        );
 
       this.setState({
         dialogoSorteoCargandoVisible: false,
@@ -272,11 +268,17 @@ class GestionSorteo extends React.Component {
       var db = window.firebase.firestore();
       await db
         .collection("info")
-        .doc("eventos")
-        .update({
-          [`info.${idEvento}.ganadores.${dialogoSorteoGanadorData.uid}`]: window.firebase.firestore.FieldValue.delete()
-        });
-
+        .doc("ganadores")
+        .collection("porEvento")
+        .doc(idEvento)
+        .set(
+          {
+            ganadores: {
+              [dialogoSorteoGanadorData.uid]: window.firebase.firestore.FieldValue.delete()
+            }
+          },
+          { merge: true }
+        );
       this.setState({ cargando: false, ausentes: [...this.state.ausentes, dialogoSorteoGanadorData] });
     } catch (ex) {
       this.setState({ cargando: false });
@@ -301,11 +303,16 @@ class GestionSorteo extends React.Component {
             await db
               .collection("info")
               .doc("ganadores")
-              .collection('porEvento')
+              .collection("porEvento")
               .doc(idEvento)
-              .update({
-                [`ganadores.${ganador.uid}`]: window.firebase.firestore.FieldValue.delete()
-              });
+              .set(
+                {
+                  ganadores: {
+                    [ganador.uid]: window.firebase.firestore.FieldValue.delete()
+                  }
+                },
+                { merge: true }
+              );
             this.setState({ cargando: false, ausentes: [...this.state.ausentes, ganador] });
           } catch (ex) {
             this.setState({ cargando: false });
@@ -391,7 +398,6 @@ class GestionSorteo extends React.Component {
       }
     });
   });
-
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -550,7 +556,7 @@ class GestionSorteo extends React.Component {
                 <Card style={{ borderRadius: 16 }}>
                   <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
                     Participantes
-                    </Typography>
+                  </Typography>
                   <List>
                     {listaParticipantes.map((x, key) => {
                       return (
@@ -565,8 +571,6 @@ class GestionSorteo extends React.Component {
                   </List>
                 </Card>
               )}
-
-
             </React.Fragment>
           )}
 

@@ -14,7 +14,7 @@ import { AnimatedSwitch } from "react-router-transition";
 //REDUX
 import { connect } from "react-redux";
 import { login, cerrarSesion, setInscripciones } from "@Redux/Actions/usuario";
-import { setEventos as setEventos, setInit as setEventosInit } from "@Redux/Actions/eventos";
+import { setEventos, setInit as setEventosInit } from "@Redux/Actions/eventos";
 
 //Componentes
 import _ from "lodash";
@@ -25,7 +25,7 @@ import asyncComponent from "./AsyncComponent";
 import CircularProgress from "@material-ui/core/CircularProgress";
 
 //Rules
-import Rules_Evento from '../Rules/Rules_Evento';
+import Rules_Evento from "../Rules/Rules_Evento";
 
 const Inicio = asyncComponent(() => import("@UI/Inicio"));
 const Inscripcion = asyncComponent(() => import("@UI/Inscripcion"));
@@ -56,7 +56,7 @@ const mapDispatchToProps = dispatch => ({
   setInscripciones: data => {
     dispatch(setInscripciones(data));
   },
-  setEventos: (data) => {
+  setEventos: data => {
     dispatch(setEventos(data));
   },
   setEventosInit: () => {
@@ -70,7 +70,7 @@ class App extends React.Component {
 
     this.state = {
       cargandoUsuario: true,
-      cargandoInscripciones: true,
+      cargandoInscripciones: true
     };
   }
 
@@ -110,55 +110,55 @@ class App extends React.Component {
     const { usuario } = this.props;
 
     this.props.setEventosInit();
-    let dataEventos = await db
-      .collection('eventos')
-      .get();
-    let eventos = dataEventos.docs.map((x) => x.data());
+    let dataEventos = await db.collection("eventos").get();
+    let eventos = dataEventos.docs.map(x => x.data());
 
     this.listenerInscripciones && this.listenerInscripciones();
     this.listenerInscripciones = db
-      .collection('info')
-      .doc('inscripciones')
-      .collection('porUsuario')
+      .collection("info")
+      .doc("inscripciones")
+      .collection("porUsuario")
       .doc(usuario.uid)
-      .onSnapshot((data) => {
+      .onSnapshot(
+        data => {
+          let info = data.data() || {};
+          let inscripciones = {};
+          Object.keys(info).forEach(a => {
+            if (a != "usuario" && a != "fecha") {
+              inscripciones[a] = [];
 
-        let info = data.data() || {};
-        let inscripciones = {};
-        Object.keys(info).forEach((a) => {
-          if (a != 'usuario') {
-            inscripciones[a] = [];
+              Object.keys(info[a]).forEach(b => {
+                if (b != "inscripto") {
+                  inscripciones[a].push(b);
+                }
+              });
+            }
+          });
 
-            Object.keys(info[a]).forEach((b) => {
-              if (b != 'inscripto') {
-                inscripciones[a].push(b);
-              }
-            });
-          }
-        });
+          this.props.setInscripciones(inscripciones);
+          const eventosInscriptos = Object.keys(inscripciones);
 
-        this.props.setInscripciones(inscripciones);
-        const eventosInscriptos = Object.keys(inscripciones);
+          let infoFinal = [];
+          eventos.forEach(evento => {
+            if (eventosInscriptos.indexOf(evento.id) != -1) {
+              infoFinal.push(evento);
+            }
+          });
 
-        let infoFinal = [];
-        eventos.forEach((evento) => {
-          if (eventosInscriptos.indexOf(evento.id) != -1) {
-            infoFinal.push(evento);
-          }
-        });
-
-        this.props.setEventos(infoFinal);
-        this.setState({ cargandoInscripciones: false });
-      }, () => {
-        this.props.setInscripciones({});
-        this.props.setEventos([]);
-        this.setState({ cargandoInscripciones: false });
-      });
-  }
+          this.props.setEventos(infoFinal);
+          this.setState({ cargandoInscripciones: false });
+        },
+        () => {
+          this.props.setInscripciones({});
+          this.props.setEventos([]);
+          this.setState({ cargandoInscripciones: false });
+        }
+      );
+  };
 
   onLogout = () => {
     this.listenerInscripciones && this.listenerInscripciones();
-  }
+  };
 
   convertirFirebaseUser = user => {
     return {
@@ -209,7 +209,6 @@ class App extends React.Component {
     return (
       <main className={classes.content}>
         <AnimatedSwitch atEnter={{ opacity: 0 }} atLeave={{ opacity: 0 }} atActive={{ opacity: 1 }} className={"switch-wrapper"}>
-
           <Route exact path={`${base}/`} component={Inicio} />
 
           <Route exact path={`${base}/Inscripcion/:codigo`} component={Inscripcion} />

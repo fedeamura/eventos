@@ -4,7 +4,7 @@ import React from "react";
 import styles from "./styles";
 import { withStyles } from "@material-ui/core/styles";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from '../../theme';
+import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
@@ -28,7 +28,7 @@ import Checkbox from "@material-ui/core/Checkbox";
 import MiPagina from "@UI/_MiPagina";
 
 //Rules
-import Rules_Evento from '../../Rules/Rules_Evento';
+import Rules_Evento from "../../Rules/Rules_Evento";
 
 //Icons
 import MdiIcon from "@mdi/react";
@@ -57,7 +57,7 @@ class Evento extends React.Component {
     super(props);
 
     this.state = {
-      id: props.match.params.id,
+      id: props.match.params.id
     };
   }
 
@@ -107,13 +107,13 @@ class Evento extends React.Component {
 
   getEvento = memoize((data, id) => {
     if (data == undefined || id == undefined) return undefined;
-    return _.find(data, (x) => x.id == id);
+    return _.find(data, x => x.id == id);
   });
 
-  getGrupos = memoize((data) => {
+  getGrupos = memoize(data => {
     if (data == undefined) return [];
 
-    let actividades = Object.keys(data.actividades || {}).map((key) => {
+    let actividades = Object.keys(data.actividades || {}).map(key => {
       return data.actividades[key];
     });
     let actividadesPorGrupo = _.groupBy(actividades, "grupo");
@@ -123,23 +123,23 @@ class Evento extends React.Component {
   getActividades = memoize((data, grupo) => {
     if (data == undefined || grupo == undefined) return [];
 
-    let actividades = Object.keys(data.actividades || {}).map((key) => {
+    let actividades = Object.keys(data.actividades || {}).map(key => {
       return data.actividades[key];
     });
-    actividades = actividades.filter((x) => x.grupo == grupo);
-    return _.orderBy(actividades, (x) => (x.nombre || '').toLowerCase());
+    actividades = actividades.filter(x => x.grupo == grupo);
+    return _.orderBy(actividades, x => (x.nombre || "").toLowerCase());
   });
 
   getMensajes = memoize((mensajes, evento) => {
     if (mensajes == undefined || evento == undefined) return [];
-    return _.orderBy(_.filter(mensajes[evento] || [], (x) => x.visible == true), 'fechaCreacion');
+    return _.orderBy(_.filter(mensajes[evento] || [], x => x.visible == true), "fechaCreacion");
   });
 
   esGanador = memoize((ganadores, idEvento, uid) => {
     if (ganadores == undefined || idEvento == undefined || uid == undefined) return false;
     if (ganadores[idEvento] == undefined) return false;
     const ganadoresDeEvento = ganadores[idEvento];
-    return _.find(ganadoresDeEvento, (x) => x.uid == uid) != undefined;
+    return _.find(ganadoresDeEvento, x => x.uid == uid) != undefined;
   });
 
   estaInscriptoEnActividad = memoize((inscripciones, idEvento, idActividad) => {
@@ -154,14 +154,13 @@ class Evento extends React.Component {
     const { id } = this.state;
     const { usuario, eventos, eventosCargando, ganadores, inscripciones, mensajes } = this.props;
 
-    const evento = this.getEvento(eventos, id)
+    const evento = this.getEvento(eventos, id);
     const grupos = this.getGrupos(evento);
     const listaMensajes = this.getMensajes(mensajes, id);
     const esGanador = this.esGanador(ganadores, id, usuario.uid);
 
     const color = evento && evento.color;
     const theme = this.getTheme(color);
-
 
     return (
       <MuiThemeProvider theme={theme}>
@@ -171,16 +170,12 @@ class Evento extends React.Component {
           toolbarLeftIconVisible={true}
           toolbarLeftIconClick={this.onBotonBackClick}
         >
-
           <React.Fragment>
-            {evento == undefined && (
-              <Typography>No existe</Typography>
-            )}
+            {evento == undefined && <Typography>No existe</Typography>}
 
             {/* Cargue los eventos  */}
             {evento && (
               <React.Fragment>
-
                 <React.Fragment>
                   <div style={{ width: "100%" }}>
                     <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
@@ -206,83 +201,96 @@ class Evento extends React.Component {
                           marginLeft: 8,
                           marginBottom: 16
                         }}
-                      >Mensajes</Typography>
+                      >
+                        Mensajes
+                      </Typography>
                       <Card style={{ padding: 16, borderRadius: 16, backgroundColor: "white", color: "black" }}>
                         {listaMensajes.map((x, indexMensaje) => {
-                          return <Typography
-                            key={indexMensaje}
-                            style={{
-                              paddingBottom: 8,
-                              paddingTop: 8,
-                              borderBottom: indexMensaje != listaMensajes.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none'
-                            }}
-                          >{x.mensaje}</Typography>
+                          return (
+                            <Typography
+                              key={indexMensaje}
+                              style={{
+                                paddingBottom: 8,
+                                paddingTop: 8,
+                                borderBottom: indexMensaje != listaMensajes.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none"
+                              }}
+                            >
+                              {x.mensaje}
+                            </Typography>
+                          );
                         })}
                       </Card>
                     </React.Fragment>
                   )}
 
-
                   {/* Actividades  */}
                   {grupos && (
-                    <Typography variant="subtitle2" style={{
-                      marginTop: 56,
-                      marginLeft: 8,
-                      marginBottom: 16
-                    }}>
+                    <Typography
+                      variant="subtitle2"
+                      style={{
+                        marginTop: 56,
+                        marginLeft: 8,
+                        marginBottom: 16
+                      }}
+                    >
                       Actividades
-                      </Typography>
+                    </Typography>
                   )}
 
-                  {grupos && grupos.map((grupo, indexGrupo) => {
-                    const actividades = this.getActividades(evento, grupo);
+                  {grupos &&
+                    grupos.map((grupo, indexGrupo) => {
+                      const actividades = this.getActividades(evento, grupo);
 
-                    let colorGrupo = undefined;
-                    if (actividades.length != 0) {
-                      colorGrupo = actividades[0].color;
-                    }
+                      let colorGrupo = undefined;
+                      if (actividades.length != 0) {
+                        colorGrupo = actividades[0].color;
+                      }
 
-                    const listaActividades = actividades.map((actividad, key) => {
+                      const listaActividades = actividades.map((actividad, key) => {
+                        const inscripto = this.estaInscriptoEnActividad(inscripciones, evento.id, actividad.id);
 
-                      const inscripto = this.estaInscriptoEnActividad(inscripciones, evento.id, actividad.id);
+                        return (
+                          <ListItem
+                            button
+                            key={key}
+                            onClick={() => {
+                              this.onActividadClick(actividad);
+                            }}
+                          >
+                            <ListItemText primary={actividad.nombre}></ListItemText>
+                            <ListItemSecondaryAction>
+                              <Checkbox checked={inscripto == true} />
+                            </ListItemSecondaryAction>
+                          </ListItem>
+                        );
+                      });
 
                       return (
-                        <ListItem
-                          button
-                          key={key}
-                          onClick={() => {
-                            this.onActividadClick(actividad);
+                        <Card
+                          key={indexGrupo}
+                          style={{
+                            marginTop: 16,
+                            borderRadius: 16,
+                            borderLeft: "8px solid " + colorGrupo
                           }}
                         >
-                          <ListItemText primary={actividad.nombre}></ListItemText>
-                          <ListItemSecondaryAction>
-                            <Checkbox checked={inscripto == true} />
-                          </ListItemSecondaryAction>
-                        </ListItem>
-                      );
-                    });
+                          {(grupo || "").trim() != "" && (
+                            <Typography
+                              style={{
+                                paddingLeft: 16,
+                                paddingRight: 16,
+                                paddingTop: 16
+                              }}
+                              variant="subtitle2"
+                            >
+                              {grupo}
+                            </Typography>
+                          )}
 
-                    return (
-                      <Card
-                        key={indexGrupo}
-                        style={{
-                          marginTop: 16,
-                          borderRadius: 16,
-                          borderLeft: "8px solid " + colorGrupo
-                        }}>
-                        <Typography
-                          style={{
-                            paddingLeft: 16,
-                            paddingRight: 16,
-                            paddingTop: 16
-                          }}
-                          variant="subtitle2">
-                          {grupo}
-                        </Typography>
-                        <List>{listaActividades}</List>
-                      </Card>
-                    );
-                  })}
+                          <List>{listaActividades}</List>
+                        </Card>
+                      );
+                    })}
                   {/* {grupos && (
                   <Typography variant="subtitle2" style={{ marginTop: 32, marginBottom: 16 }}>
                     Actividades
@@ -322,10 +330,8 @@ class Evento extends React.Component {
 
                   <div style={{ height: 72 }} />
                 </React.Fragment>
-
               </React.Fragment>
             )}
-
           </React.Fragment>
 
           {/* Boton escanear */}

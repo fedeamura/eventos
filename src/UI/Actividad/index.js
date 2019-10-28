@@ -4,7 +4,7 @@ import React from "react";
 import styles from "./styles";
 import { withStyles } from "@material-ui/core/styles";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from '../../theme';
+import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
@@ -62,7 +62,7 @@ class Actividad extends React.Component {
 
   getEvento = memoize((data, idEvento) => {
     if (data == undefined || idEvento == undefined) return undefined;
-    return _.find(data, (x) => x.id == idEvento);
+    return _.find(data, x => x.id == idEvento);
   });
 
   getActividad = memoize((data, idEvento, idActividad) => {
@@ -130,20 +130,22 @@ class Actividad extends React.Component {
                     <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      padding: 8,
-                      alignItems: "center",
-                      border: "1px solid rgba(0,0,0,0.1)",
-                      borderRadius: 16,
-                      width: "fit-content",
-                      marginBottom: 16
-                    }}
-                  >
-                    <div style={{ width: 16, height: 16, borderRadius: 16, backgroundColor: actividad.color, marginRight: 8 }} />
-                    <Typography>{actividad.grupo}</Typography>
-                  </div>
+                  {(actividad.grupo || "").trim() != "" && (
+                    <div
+                      style={{
+                        display: "flex",
+                        padding: 8,
+                        alignItems: "center",
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        borderRadius: 16,
+                        width: "fit-content",
+                        marginBottom: 16
+                      }}
+                    >
+                      <div style={{ width: 16, height: 16, borderRadius: 16, backgroundColor: actividad.color, marginRight: 8 }} />
+                      <Typography>{actividad.grupo}</Typography>
+                    </div>
+                  )}
 
                   {/* Info de la actividad */}
                   <Typography variant="h5">{actividad.nombre}</Typography>

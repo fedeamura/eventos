@@ -5,12 +5,12 @@ import styles from "./styles";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from '../../theme';
+import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
 import { push } from "connected-react-router";
-import { setEventos as setEventosGestion, setInit as setEventosGestionInit } from '@Redux/Actions/gestion';
+import { setEventos as setEventosGestion, setInit as setEventosGestionInit } from "@Redux/Actions/gestion";
 
 //Componentes
 import Typography from "@material-ui/core/Typography";
@@ -18,25 +18,18 @@ import Card from "@material-ui/core/Card";
 import Button from "@material-ui/core/Button";
 import memoize from "memoize-one";
 import _ from "lodash";
-import {
-  IconButton,
-  Fab,
-  Checkbox,
-  FormControlLabel
-} from "@material-ui/core";
-
+import { IconButton, Fab, Checkbox, FormControlLabel } from "@material-ui/core";
 
 //Icons
-import IconDeleteOutlined from '@material-ui/icons/DeleteOutlined';
+import IconDeleteOutlined from "@material-ui/icons/DeleteOutlined";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
-import DialogoForm from '@Componentes/MiDialogoForm';
+import DialogoForm from "@Componentes/MiDialogoForm";
 
 //Rules
-import Rules_Evento from '../../Rules/Rules_Evento';
-
+import Rules_Evento from "../../Rules/Rules_Evento";
 
 const mapStateToProps = state => {
   return {
@@ -73,7 +66,6 @@ class GestionMensajes extends React.Component {
 
   componentWillMount() {
     this.init();
-
   }
 
   componentWillReceiveProps(nextProps) {
@@ -103,17 +95,15 @@ class GestionMensajes extends React.Component {
 
         const db = window.firebase.firestore();
         let data = await db
-          .collection('eventos')
-          .where('roles.' + this.props.usuario.uid, '>=', 2)
+          .collection("eventos")
+          .where("roles." + this.props.usuario.uid, ">=", 2)
           .get();
-
 
         let eventos = data.docs.map(x => x.data());
         this.props.setEventosGestion(eventos);
       }
 
-
-      const evento = _.find(this.props.eventos, (x) => x.id == idEvento);
+      const evento = _.find(this.props.eventos, x => x.id == idEvento);
       if (evento == undefined) {
         this.mostrarDialogoMensaje({
           autoCerrar: false,
@@ -129,31 +119,30 @@ class GestionMensajes extends React.Component {
         return;
       }
 
-
       Rules_Evento.escucharMensajes(idEvento);
 
       this.setState({ cargando: false });
     } catch (ex) {
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
-      console.log('Error', mensaje);
+      let mensaje = typeof ex === "object" ? ex.message : ex;
+      console.log("Error", mensaje);
       this.setState({ cargando: false });
       this.mostrarDialogoMensaje({
         mensaje,
         autoCerrar: false,
         botonNoVisible: true,
-        botonNoMensaje: 'Volver',
+        botonNoMensaje: "Volver",
         onBotonNoClick: () => {
           setTimeout(() => {
             this.onBotonBackClick();
           }, 300);
         },
-        botonSiMensaje: 'Reintentar',
+        botonSiMensaje: "Reintentar",
         onBotonSiClick: () => {
           setTimeout(() => {
             this.init();
           }, 300);
         }
-      })
+      });
     }
   };
 
@@ -161,35 +150,34 @@ class GestionMensajes extends React.Component {
     this.props.redirect("/Gestion/Panel/" + this.state.idEvento);
   };
 
-  onBotonBorrarClick = (mensaje) => {
-    this.setState({ mensajes: _.filter(this.state.mensajes, (x) => x.id != mensaje.id) });
-  }
+  onBotonBorrarClick = mensaje => {
+    this.setState({ mensajes: _.filter(this.state.mensajes, x => x.id != mensaje.id) });
+  };
 
   onBotonNuevoClick = () => {
     this.setState({ dialogoNuevoVisible: true });
-  }
+  };
 
   onDialogoNuevoClose = () => {
     this.setState({
       dialogoNuevoVisible: false
-    })
-  }
+    });
+  };
 
-  onDialogoNuevoBotonSiClick = (data) => {
+  onDialogoNuevoBotonSiClick = data => {
     if (data.mensaje.trim() == "") {
-      this.mostrarDialogoMensaje({ mensaje: 'Ingrese el mensaje' });
+      this.mostrarDialogoMensaje({ mensaje: "Ingrese el mensaje" });
       return;
     }
 
     this.setState({ dialogoNuevoVisible: false });
 
-
     let idMax = 0;
-    this.state.mensajes.forEach((x) => {
+    this.state.mensajes.forEach(x => {
       if (x.id > idMax) {
         idMax = x.id;
       }
-    })
+    });
 
     idMax += 1;
 
@@ -204,7 +192,7 @@ class GestionMensajes extends React.Component {
         }
       ]
     });
-  }
+  };
 
   onBotonGuardarClick = async () => {
     try {
@@ -213,34 +201,37 @@ class GestionMensajes extends React.Component {
       const db = window.firebase.firestore();
 
       let data = {};
-      this.state.mensajes.forEach((x) => {
+      this.state.mensajes.forEach(x => {
         data[x.id] = {
           id: x.id,
           fechaCreacion: x.fechaCreacion,
           mensaje: x.mensaje,
           visible: x.visible || false
-        }
+        };
       });
 
       await db
-        .collection('info')
-        .doc('mensajes')
-        .collection('porEvento')
+        .collection("info")
+        .doc("mensajes")
+        .collection("porEvento")
         .doc(idEvento)
-        .update({
-          'mensajes': data
-        });
-
+        .set(
+          {
+            mensajes: data
+          },
+          {
+            merge: true
+          }
+        );
 
       this.setState({ dialogoNuevoVisible: false });
 
-      this.mostrarDialogoMensaje({ mensaje: 'Mensajes guardados' });
-
+      this.mostrarDialogoMensaje({ mensaje: "Mensajes guardados" });
     } catch (ex) {
-      let mensaje = typeof ex === 'object' ? ex.message : ex;
+      let mensaje = typeof ex === "object" ? ex.message : ex;
       this.mostrarDialogoMensaje({ mensaje });
     }
-  }
+  };
 
   getEvento = memoize((eventos, idEvento) => {
     return _.find(eventos, x => x.id == idEvento);
@@ -248,13 +239,13 @@ class GestionMensajes extends React.Component {
 
   getMensajes = memoize((mensajes, idEvento) => {
     if (mensajes == undefined || idEvento == undefined) return [];
-    let lista = _.orderBy(mensajes || [], 'fechaCreacion');
+    let lista = _.orderBy(mensajes || [], "fechaCreacion");
 
     let id = 0;
-    lista.forEach((x) => {
+    lista.forEach(x => {
       id += 1;
       x.id = id;
-    })
+    });
     return lista;
   });
 
@@ -275,7 +266,6 @@ class GestionMensajes extends React.Component {
       }
     });
   });
-
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -345,75 +335,85 @@ class GestionMensajes extends React.Component {
                 <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
               </div>
 
-
-              <div style={{ marginBottom: 16, display: 'flex' }}
-              >
-
+              <div style={{ marginBottom: 16, display: "flex" }}>
                 <div style={{ flex: 1 }} />
 
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="primary" onClick={this.onBotonNuevoClick}>
+                <Button size="small" variant="outlined" color="primary" onClick={this.onBotonNuevoClick}>
                   Nuevo
-              </Button>
+                </Button>
               </div>
 
               {(listaMensajes == undefined || listaMensajes.length == 0) && (
-                <Typography>Sin mensajes</Typography>
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 16,
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginBottom: 16
+                  }}
+                >
+                  <Typography style={{ textAlign: "center" }}>Aún no tiene ningún mensaje cargado</Typography>
+                </div>
               )}
 
-              {listaMensajes && listaMensajes.length != 0 && listaMensajes.map((mensaje, index) => {
-                return <Card
-                  style={{
-                    display: 'flex',
-                    padding: 8, marginBottom: 8, borderRadius: 8
-                  }}
-                  key={index}>
+              {listaMensajes &&
+                listaMensajes.length != 0 &&
+                listaMensajes.map((mensaje, index) => {
+                  return (
+                    <Card
+                      style={{
+                        display: "flex",
+                        padding: 16,
+                        marginBottom: 16,
+                        borderRadius: 16
+                      }}
+                      key={index}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <Typography>{mensaje.mensaje}</Typography>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={mensaje.visible || false}
+                              onChange={e => {
+                                let m = this.state.mensajes;
+                                m.forEach(m1 => {
+                                  if (m1.id == mensaje.id) {
+                                    m1.visible = e.target.checked;
+                                  }
+                                });
 
-                  <div style={{ flex: 1 }}>
-                    <Typography>{mensaje.mensaje}</Typography>
-                    <FormControlLabel
-                      control={
-                        <Checkbox checked={mensaje.visible || false} onChange={(e) => {
-                          console.log('checked', e.target.checked)
-                          let m = this.state.mensajes;
-                          m.forEach((m1) => {
-                            if (m1.id == mensaje.id) {
-                              m1.visible = e.target.checked;
-                            }
-                          });
+                                this.setState({
+                                  mensajes: [...m]
+                                });
+                              }}
+                            />
+                          }
+                          label="Visible"
+                        />
+                      </div>
 
-                          this.setState({
-                            mensajes: [
-                              ...m
-                            ]
-                          });
-                        }} />
-                      }
-                      label="Visible"
-                    />
+                      <div>
+                        <IconButton
+                          onClick={() => {
+                            this.onBotonBorrarClick(mensaje);
+                          }}
+                        >
+                          <IconDeleteOutlined style={{ fontSize: 16 }} />
+                        </IconButton>
+                      </div>
+                    </Card>
+                  );
+                })}
 
-                  </div>
-
-                  <div>
-                    <IconButton onClick={() => {
-                      this.onBotonBorrarClick(mensaje);
-                    }}>
-                      <IconDeleteOutlined style={{ fontSize: 16 }} />
-                    </IconButton>
-                  </div>
-                </Card>
-              })}
-
-
-              <Fab
-                variant="extended"
-                color="primary"
-                onClick={this.onBotonGuardarClick}
-              >
-                Guardar</Fab>
-
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                <Fab size="small" variant="extended" color="primary" onClick={this.onBotonGuardarClick}>
+                  Guardar cambios
+                </Fab>
+              </div>
             </React.Fragment>
           )}
 
@@ -433,13 +433,13 @@ class GestionMensajes extends React.Component {
             autoCerrarBotonNo={false}
           />
 
-
           <DialogoForm
+            titulo="Nuevo mensaje"
             visible={this.state.dialogoNuevoVisible || false}
             inputs={[
               {
-                key: 'mensaje',
-                label: 'Mensajes....',
+                key: "mensaje",
+                label: "Mensaje...."
               }
             ]}
             textoNo="Cancelar"
