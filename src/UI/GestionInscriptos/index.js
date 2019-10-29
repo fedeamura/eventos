@@ -28,6 +28,8 @@ import { CSVLink } from "react-csv";
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
+import Header from "@UI/_Header";
+import Footer from "@UI/_Footer";
 
 const CVS_HEADERS = [{ label: "Nombre", key: "nombre" }, { label: "Email", key: "email" }, { label: "Fecha", key: "fecha" }];
 
@@ -265,9 +267,7 @@ class GestionInscriptos extends React.Component {
         >
           {evento && (
             <React.Fragment>
-              <div style={{ width: "100%" }}>
-                <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
-              </div>
+              <Header evento={evento} />
 
               {/* Participantes */}
               {inscriptos && inscriptos.length != 0 && (
@@ -277,7 +277,7 @@ class GestionInscriptos extends React.Component {
                     <div>
                       {csvData && (
                         <CSVLink data={csvData} headers={CVS_HEADERS} filename={"Inscriptos.csv"} style={{ textDecoration: "none" }}>
-                          <Button variant="outlined" size="small" color="primary" style={{ textDecoration: "none" }}>
+                          <Button variant="outlined" size="small" style={{ textDecoration: "none" }}>
                             Descargar
                           </Button>
                         </CSVLink>
@@ -304,6 +304,8 @@ class GestionInscriptos extends React.Component {
                   </Card>
                 </React.Fragment>
               )}
+
+              <Footer evento={evento} />
             </React.Fragment>
           )}
 

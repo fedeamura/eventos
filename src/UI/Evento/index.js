@@ -15,24 +15,38 @@ import Typography from "@material-ui/core/Typography";
 import memoize from "memoize-one";
 import Fab from "@material-ui/core/Fab";
 import _ from "lodash";
-
-//componentes
 import Card from "@material-ui/core/Card";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 import List from "@material-ui/core/List";
 import ListItemSecondaryAction from "@material-ui/core/ListItemSecondaryAction";
 import Checkbox from "@material-ui/core/Checkbox";
+import Lottie from "react-lottie";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
+import Header from "@UI/_Header";
+import Footer from "@UI/_Footer";
 
 //Rules
 import Rules_Evento from "../../Rules/Rules_Evento";
 
 //Icons
+import IconMessageOutlined from "@material-ui/icons/MessageOutlined";
 import MdiIcon from "@mdi/react";
 import { mdiQrcodeScan } from "@mdi/js";
+
+//Lotties
+import * as animSorteoGanador from "@Resources/animaciones/sorteo_ganador.json";
+
+const lottieGanador = {
+  loop: false,
+  autoplay: true,
+  animationData: animSorteoGanador,
+  rendererSettings: {
+    preserveAspectRatio: "xMidYMid slice"
+  }
+};
 
 const mapStateToProps = state => {
   return {
@@ -87,24 +101,6 @@ class Evento extends React.Component {
     this.props.redirect("/");
   };
 
-  getTheme = memoize(color => {
-    if (color == undefined) return createMuiTheme(themeData);
-    return createMuiTheme({
-      ...themeData,
-      palette: {
-        ...themeData.palette,
-        primary: {
-          ...themeData.palette.main,
-          main: color
-        },
-        secondary: {
-          ...themeData.palette.secondary,
-          main: color
-        }
-      }
-    });
-  });
-
   getEvento = memoize((data, id) => {
     if (data == undefined || id == undefined) return undefined;
     return _.find(data, x => x.id == id);
@@ -132,7 +128,7 @@ class Evento extends React.Component {
 
   getMensajes = memoize((mensajes, evento) => {
     if (mensajes == undefined || evento == undefined) return [];
-    return _.orderBy(_.filter(mensajes[evento] || [], x => x.visible == true), "fechaCreacion");
+    return _.filter(mensajes[evento] || [], x => x.visible == true);
   });
 
   esGanador = memoize((ganadores, idEvento, uid) => {
@@ -152,24 +148,22 @@ class Evento extends React.Component {
 
   render() {
     const { id } = this.state;
-    const { usuario, eventos, eventosCargando, ganadores, inscripciones, mensajes } = this.props;
+    const { usuario, eventos, eventosReady, eventosCargando, ganadores, inscripciones, mensajes } = this.props;
 
     const evento = this.getEvento(eventos, id);
     const grupos = this.getGrupos(evento);
     const listaMensajes = this.getMensajes(mensajes, id);
     const esGanador = this.esGanador(ganadores, id, usuario.uid);
-
     const color = evento && evento.color;
-    const theme = this.getTheme(color);
 
     return (
-      <MuiThemeProvider theme={theme}>
-        <MiPagina
-          cargando={eventosCargando || false}
-          toolbarSubtitulo={evento ? evento.nombre : "..."}
-          toolbarLeftIconVisible={true}
-          toolbarLeftIconClick={this.onBotonBackClick}
-        >
+      <MiPagina
+        cargando={eventosCargando || false}
+        toolbarSubtitulo={evento ? evento.nombre : "..."}
+        toolbarLeftIconVisible={true}
+        toolbarLeftIconClick={this.onBotonBackClick}
+      >
+        {eventosReady && (
           <React.Fragment>
             {evento == undefined && <Typography>No existe</Typography>}
 
@@ -177,58 +171,76 @@ class Evento extends React.Component {
             {evento && (
               <React.Fragment>
                 <React.Fragment>
-                  <div style={{ width: "100%" }}>
-                    <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
-                  </div>
-
-                  <Typography variant="h5">{evento.nombre}</Typography>
-                  <Typography variant="body2">{evento.descripcion}</Typography>
+                  <Header evento={evento} />
 
                   {/* Ganadores */}
                   {esGanador == true && (
-                    <Card style={{ padding: 16, borderRadius: 16, backgroundColor: "green", color: "white", marginTop: 32 }}>
-                      <Typography>¡Ganaste un sorteo!</Typography>
-                    </Card>
+                    <div style={{ padding: 16, borderRadius: 16, marginTop: 16, marginBottom: 32 }}>
+                      <Lottie options={lottieGanador} height={100} width={100} style={{ minHeight: "100px", marginBottom: 16 }} />
+                      <Typography style={{ textAlign: "center" }}>¡Ganaste un sorteo!</Typography>
+                    </div>
                   )}
 
                   {/* Mensajes */}
                   {listaMensajes && listaMensajes.length != 0 && (
-                    <React.Fragment>
-                      <Typography
-                        variant="subtitle2"
+                    <Card
+                      style={{
+                        marginTop: 16,
+                        flex: 1,
+                        borderRadius: 16,
+                        backgroundColor: "white",
+                        color: "black"
+                      }}
+                    >
+                      <div
                         style={{
-                          marginTop: 32,
-                          marginLeft: 8,
-                          marginBottom: 16
+                          padding: 16,
+                          backgroundColor: "rgba(0,0,0,0.025)",
+                          borderBottom: "1px solid rgba(0,0,0,0.1)",
+                          display: "flex",
+                          alignItems: "center"
                         }}
                       >
-                        Mensajes
-                      </Typography>
-                      <Card style={{ padding: 16, borderRadius: 16, backgroundColor: "white", color: "black" }}>
+                        <IconMessageOutlined style={{ fontSize: 16, marginRight: 8, color: "black" }} />
+                        <Typography style={{ color: "black" }}>Mensajes</Typography>
+                      </div>
+
+                      <List>
                         {listaMensajes.map((x, indexMensaje) => {
+                          const tieneTitulo = x.titulo && x.titulo.trim() != "";
+
+                          const titulo = tieneTitulo ? x.titulo.trim() : x.mensaje.trim();
+                          const mensaje = tieneTitulo ? x.mensaje.trim() : "";
+
                           return (
-                            <Typography
-                              key={indexMensaje}
-                              style={{
-                                paddingBottom: 8,
-                                paddingTop: 8,
-                                borderBottom: indexMensaje != listaMensajes.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none"
-                              }}
-                            >
-                              {x.mensaje}
-                            </Typography>
+                            <ListItem key={indexMensaje} divider>
+                              <ListItemText primary={titulo} secondary={mensaje} />
+                            </ListItem>
                           );
                         })}
-                      </Card>
-                    </React.Fragment>
+                      </List>
+                    </Card>
                   )}
 
                   {/* Actividades  */}
-                  {grupos && (
+                  {evento.conActividades != true && (
+                    <div
+                      style={{
+                        marginTop: 32,
+                        padding: 16,
+                        borderRadius: 16,
+                        border: "1px solid rgba(0,0,0, 0.1)"
+                      }}
+                    >
+                      <Typography style={{ textAlign: "center" }}>Ya estás inscripto en el evento</Typography>
+                    </div>
+                  )}
+
+                  {evento.conActividades == true && grupos && (
                     <Typography
                       variant="subtitle2"
                       style={{
-                        marginTop: 56,
+                        marginTop: 32,
                         marginLeft: 8,
                         marginBottom: 16
                       }}
@@ -237,7 +249,8 @@ class Evento extends React.Component {
                     </Typography>
                   )}
 
-                  {grupos &&
+                  {evento.conActividades == true &&
+                    grupos &&
                     grupos.map((grupo, indexGrupo) => {
                       const actividades = this.getActividades(evento, grupo);
 
@@ -291,64 +304,38 @@ class Evento extends React.Component {
                         </Card>
                       );
                     })}
-                  {/* {grupos && (
-                  <Typography variant="subtitle2" style={{ marginTop: 32, marginBottom: 16 }}>
-                    Actividades
-                    </Typography>
-                )}
-                {grupos &&
-                  grupos.map((grupo, index) => {
-                    let actividades = _.orderBy(actividadesPorGrupo[grupo], "nombre");
-                    let color = actividades[0].color;
 
-                    let listaActividades = actividades.map((actividad, key) => {
-                      return (
-                        <ListItem
-                          button
-                          key={key}
-                          onClick={() => {
-                            this.onActividadClick(actividad);
-                          }}
-                        >
-                          <ListItemText primary={actividad.nombre}></ListItemText>
-                          <ListItemSecondaryAction>
-                            <Checkbox checked={actividad.inscripto == true} />
-                          </ListItemSecondaryAction>
-                        </ListItem>
-                      );
-                    }); */}
+                  {/* Sponsors */}
+                  <Footer evento={evento} />
 
-                  {/* return (
-                      <Card key={index} style={{ marginTop: 16, borderRadius: 16, borderLeft: "8px solid " + color }}>
-                        <Typography style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }} variant="subtitle2">
-                          {grupo}
-                        </Typography>
-                        <List>{listaActividades}</List>
-                      </Card>
-                    );
-                  })} */}
+                  {evento.conActividades == true && (
+                    <React.Fragment>
+                      {/* Espacio para que se vea el boton */}
+                      <div style={{ height: 72 }} />
 
-                  <div style={{ height: 72 }} />
+                      {/* Boton escanear */}
+                      <Fab
+                        color="primary"
+                        variant="extended"
+                        onClick={this.onBotonScanClick}
+                        style={{
+                          position: "absolute",
+                          right: 16,
+                          bottom: 16,
+                          backgroundColor: color
+                        }}
+                      >
+                        <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} style={{ marginRight: 8 }} color="black" />
+                        Escanear
+                      </Fab>
+                    </React.Fragment>
+                  )}
                 </React.Fragment>
               </React.Fragment>
             )}
           </React.Fragment>
-
-          {/* Boton escanear */}
-          <Fab
-            color="primary"
-            onClick={this.onBotonScanClick}
-            style={{
-              position: "absolute",
-              right: 16,
-              bottom: 16,
-              backgroundColor: color
-            }}
-          >
-            <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} color="white" />
-          </Fab>
-        </MiPagina>
-      </MuiThemeProvider>
+        )}
+      </MiPagina>
     );
   }
 }

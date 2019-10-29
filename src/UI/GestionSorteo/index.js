@@ -16,19 +16,30 @@ import { setEventos as setEventosGestion, setInit as setEventosGestionInit } fro
 import Typography from "@material-ui/core/Typography";
 import Card from "@material-ui/core/Card";
 import Button from "@material-ui/core/Button";
+import List from "@material-ui/core/List";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemText from "@material-ui/core/ListItemText";
+import ListItemAvatar from "@material-ui/core/ListItemAvatar";
+import Avatar from "@material-ui/core/Avatar";
+import Fab from "@material-ui/core/Fab";
+import Dialog from "@material-ui/core/Dialog";
+import DialogContent from "@material-ui/core/DialogContent";
+import Lottie from "react-lottie";
 import memoize from "memoize-one";
 import _ from "lodash";
-import { List, ListItem, ListItemText, ListItemAvatar, Avatar, Fab, Dialog, DialogContent } from "@material-ui/core";
-import Lottie from "react-lottie";
-import * as animSorteoCargando from "@Resources/animaciones/sorteo_cargando.json";
-import * as animSorteoGanador from "@Resources/animaciones/sorteo_ganador.json";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
+import Header from "@UI/_Header";
+import Footer from "@UI/_Footer";
 
 //Rules
 import Rules_Evento from "../../Rules/Rules_Evento";
+
+//Lotties
+import * as animSorteoCargando from "@Resources/animaciones/sorteo_cargando.json";
+import * as animSorteoGanador from "@Resources/animaciones/sorteo_ganador.json";
 
 const lottieCargando = {
   loop: true,
@@ -474,16 +485,13 @@ class GestionSorteo extends React.Component {
         >
           {evento && (
             <React.Fragment>
-              <div style={{ width: "100%" }}>
-                <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
-              </div>
+              <Header evento={evento} />
 
               {listaParticipantes && listaParticipantes.length != 0 && (
                 <React.Fragment>
                   <div
                     style={{
                       marginBottom: 16,
-                      marginTop: 16,
                       width: "100%",
                       display: "flex",
                       justifyContent: "center",
@@ -571,6 +579,8 @@ class GestionSorteo extends React.Component {
                   </List>
                 </Card>
               )}
+
+              <Footer evento={evento} />
             </React.Fragment>
           )}
 

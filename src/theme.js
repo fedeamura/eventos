@@ -4,13 +4,28 @@ export default {
   },
   palette: {
     primary: {
-      main: "#ff0100"
+      main: "#fcca56",
+      contrastText: "#000"
     },
     secondary: {
-      main: "#ff0100"
+      main: "#fcca56",
+      contrastText: "#000"
     },
     background: {
-      default: "#eee"
+      default: "#f8f8f8"
+    },
+    formControl: {
+      color: "black"
+    }
+  },
+  overrides: {
+    MuiCheckbox: {
+      colorSecondary: {
+        color: "rgba(0,0,0,0.7)",
+        "&$checked": {
+          color: "rgba(0,0,0,0.7)"
+        }
+      }
     }
   }
-}
+};

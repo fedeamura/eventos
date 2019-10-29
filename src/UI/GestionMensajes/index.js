@@ -4,8 +4,6 @@ import React from "react";
 import styles from "./styles";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
-import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
@@ -16,28 +14,31 @@ import { setEventos as setEventosGestion, setInit as setEventosGestionInit } fro
 import Typography from "@material-ui/core/Typography";
 import Card from "@material-ui/core/Card";
 import Button from "@material-ui/core/Button";
+import IconButton from "@material-ui/core/IconButton";
+import Fab from "@material-ui/core/Fab";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import memoize from "memoize-one";
 import _ from "lodash";
-import { IconButton, Fab, Checkbox, FormControlLabel } from "@material-ui/core";
 
 //Icons
 import IconDeleteOutlined from "@material-ui/icons/DeleteOutlined";
+import IconDragIndicatorOutlined from "@material-ui/icons/DragIndicatorOutlined";
+import IconVisibilityOutlined from "@material-ui/icons/VisibilityOutlined";
+import IconVisibilityOffOutlined from "@material-ui/icons/VisibilityOffOutlined";
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 import DialogoForm from "@Componentes/MiDialogoForm";
-
-//Rules
-import Rules_Evento from "../../Rules/Rules_Evento";
+import Header from "@UI/_Header";
+import Footer from "@UI/_Footer";
 
 const mapStateToProps = state => {
   return {
     usuario: state.Usuario.usuario,
     eventos: state.Gestion.eventos,
     eventosCargando: state.Gestion.eventosCargando,
-    eventosReady: state.Gestion.eventosReady,
-    mensajes: state.Eventos.mensajes
+    eventosReady: state.Gestion.eventosReady
   };
 };
 
@@ -57,10 +58,10 @@ class GestionMensajes extends React.Component {
   constructor(props) {
     super(props);
 
-    const idEvento = props.match.params.idEvento;
     this.state = {
-      idEvento: idEvento,
-      mensajes: (props.mensajes || {})[idEvento] || []
+      idEvento: props.match.params.idEvento,
+      cargando: false,
+      mensajes: undefined
     };
   }
 
@@ -75,14 +76,6 @@ class GestionMensajes extends React.Component {
       window.location.reload();
       return;
     }
-
-    if (nextProps.mensajes != this.props.mensajes) {
-      this.setState({ mensajes: nextProps.mensajes[idEventoActual] || [] });
-    }
-  }
-
-  componentWillUnmount() {
-    Rules_Evento.dejarDeEscucharMensajes(this.state.id);
   }
 
   init = async () => {
@@ -90,6 +83,7 @@ class GestionMensajes extends React.Component {
       this.setState({ cargando: true });
       const { idEvento } = this.state;
 
+      //Busco los eventos en los que soy supervisor
       if (this.props.eventos == undefined) {
         this.props.setEventosGestionInit();
 
@@ -103,6 +97,7 @@ class GestionMensajes extends React.Component {
         this.props.setEventosGestion(eventos);
       }
 
+      //Valido el permiso
       const evento = _.find(this.props.eventos, x => x.id == idEvento);
       if (evento == undefined) {
         this.mostrarDialogoMensaje({
@@ -119,9 +114,22 @@ class GestionMensajes extends React.Component {
         return;
       }
 
-      Rules_Evento.escucharMensajes(idEvento);
+      //Busco los mensajes
+      const db = window.firebase.firestore();
+      var data = await db
+        .collection("info")
+        .doc("mensajes")
+        .collection("porEvento")
+        .doc(idEvento)
+        .get();
+      data = data.data();
+      let mensajes = data.mensajes || {};
+      let listaMensajes = [];
+      Object.keys(mensajes).forEach(id => {
+        listaMensajes.push(mensajes[id]);
+      });
 
-      this.setState({ cargando: false });
+      this.setState({ cargando: false, mensajes: listaMensajes });
     } catch (ex) {
       let mensaje = typeof ex === "object" ? ex.message : ex;
       console.log("Error", mensaje);
@@ -150,6 +158,45 @@ class GestionMensajes extends React.Component {
     this.props.redirect("/Gestion/Panel/" + this.state.idEvento);
   };
 
+  getListaReordenada = (list, startIndex, endIndex) => {
+    const result = Array.from(list);
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+
+    return result;
+  };
+
+  getItemStyle = (isDragging, draggableStyle, visible) => ({
+    userSelect: "none",
+    borderRadius: 16,
+    marginBottom: 8,
+    display: "flex",
+    opacity: visible == true ? 1 : 0.4,
+    // padding: 8 * 2,
+    // margin: `0 0 ${8}px 0`,
+
+    // change background colour if dragging
+    background: isDragging ? "#eee" : "white",
+
+    // styles we need to apply on draggables
+    ...draggableStyle
+  });
+
+  getListStyle = isDraggingOver => ({});
+
+  onDragEnd = result => {
+    // dropped outside the list
+    if (!result.destination) {
+      return;
+    }
+
+    const items = this.getListaReordenada(this.state.mensajes, result.source.index, result.destination.index);
+
+    this.setState({
+      mensajes: items
+    });
+  };
+
   onBotonBorrarClick = mensaje => {
     this.setState({ mensajes: _.filter(this.state.mensajes, x => x.id != mensaje.id) });
   };
@@ -165,30 +212,30 @@ class GestionMensajes extends React.Component {
   };
 
   onDialogoNuevoBotonSiClick = data => {
-    if (data.mensaje.trim() == "") {
-      this.mostrarDialogoMensaje({ mensaje: "Ingrese el mensaje" });
+    if (data.titulo.trim() == "" && data.mensaje.trim() == "") {
+      this.mostrarDialogoMensaje({ mensaje: "Ingrese el titulo o el mensaje" });
       return;
     }
 
+    let titulo = data.titulo.trim() != "" ? data.titulo.trim() : undefined;
+    let mensaje = data.mensaje.trim() != "" ? data.mensaje.trim() : undefined;
+
+    if (mensaje == undefined) {
+      mensaje = titulo;
+      titulo = undefined;
+    }
+
     this.setState({ dialogoNuevoVisible: false });
-
-    let idMax = 0;
-    this.state.mensajes.forEach(x => {
-      if (x.id > idMax) {
-        idMax = x.id;
-      }
-    });
-
-    idMax += 1;
 
     this.setState({
       dialogoNuevoMensaje: false,
       mensajes: [
         ...this.state.mensajes,
         {
-          id: idMax,
+          id: this.state.mensajes.length + 1,
           fechaCreacion: new Date(),
-          mensaje: data.mensaje.trim()
+          titulo: titulo,
+          mensaje: mensaje
         }
       ]
     });
@@ -196,18 +243,28 @@ class GestionMensajes extends React.Component {
 
   onBotonGuardarClick = async () => {
     try {
+      this.setState({ cargando: true });
       const { idEvento } = this.state;
 
       const db = window.firebase.firestore();
 
+      let index = 1;
       let data = {};
       this.state.mensajes.forEach(x => {
-        data[x.id] = {
-          id: x.id,
+        const tieneTitulo = x.titulo && x.titulo.trim() != "";
+
+        data[index] = {
+          id: index,
           fechaCreacion: x.fechaCreacion,
-          mensaje: x.mensaje,
+          mensaje: x.mensaje.trim(),
           visible: x.visible || false
         };
+
+        if (tieneTitulo) {
+          data[index].titulo = x.titulo.trim();
+        }
+
+        index += 1;
       });
 
       await db
@@ -215,19 +272,15 @@ class GestionMensajes extends React.Component {
         .doc("mensajes")
         .collection("porEvento")
         .doc(idEvento)
-        .set(
-          {
-            mensajes: data
-          },
-          {
-            merge: true
-          }
-        );
+        .set({
+          mensajes: data
+        });
 
-      this.setState({ dialogoNuevoVisible: false });
+      this.setState({ dialogoNuevoVisible: false, cargando: false });
 
       this.mostrarDialogoMensaje({ mensaje: "Mensajes guardados" });
     } catch (ex) {
+      this.setState({ cargando: false });
       let mensaje = typeof ex === "object" ? ex.message : ex;
       this.mostrarDialogoMensaje({ mensaje });
     }
@@ -235,36 +288,6 @@ class GestionMensajes extends React.Component {
 
   getEvento = memoize((eventos, idEvento) => {
     return _.find(eventos, x => x.id == idEvento);
-  });
-
-  getMensajes = memoize((mensajes, idEvento) => {
-    if (mensajes == undefined || idEvento == undefined) return [];
-    let lista = _.orderBy(mensajes || [], "fechaCreacion");
-
-    let id = 0;
-    lista.forEach(x => {
-      id += 1;
-      x.id = id;
-    });
-    return lista;
-  });
-
-  getTheme = memoize(color => {
-    if (color == undefined) return createMuiTheme(themeData);
-    return createMuiTheme({
-      ...themeData,
-      palette: {
-        ...themeData.palette,
-        primary: {
-          ...themeData.palette.main,
-          main: color
-        },
-        secondary: {
-          ...themeData.palette.secondary,
-          main: color
-        }
-      }
-    });
   });
 
   //Dialogo mensaje
@@ -312,144 +335,173 @@ class GestionMensajes extends React.Component {
   };
 
   render() {
-    const { idEvento, mensajes } = this.state;
+    const { idEvento, mensajes, cargando } = this.state;
     const { eventos, eventosCargando } = this.props;
 
     const evento = this.getEvento(eventos, idEvento);
-    const listaMensajes = this.getMensajes(mensajes, idEvento);
 
-    const color = evento && evento.color;
-    const theme = this.getTheme(color);
-
+    const cargandoPagina = eventosCargando == true || cargando == true;
     return (
-      <MuiThemeProvider theme={theme}>
-        <MiPagina
-          cargando={eventosCargando || false}
-          toolbarTitulo="Mensajes"
-          toolbarLeftIconVisible={true}
-          toolbarLeftIconClick={this.onBotonBackClick}
-        >
-          {evento && (
-            <React.Fragment>
-              <div style={{ width: "100%" }}>
-                <img src={evento.logo} style={{ maxWidth: "100%", objectFit: "contain", maxHeight: 100, marginBottom: 16 }} />
+      <MiPagina
+        cargando={cargandoPagina || false}
+        toolbarTitulo="Mensajes"
+        toolbarLeftIconVisible={true}
+        toolbarLeftIconClick={this.onBotonBackClick}
+      >
+        {evento && mensajes && (
+          <React.Fragment>
+            <Header evento={evento} />
+
+            <div style={{ marginBottom: 16, display: "flex", marginTop: 32 }}>
+              <div style={{ flex: 1 }} />
+
+              <Button size="small" variant="outlined" onClick={this.onBotonNuevoClick}>
+                Nuevo
+              </Button>
+            </div>
+
+            {(mensajes == undefined || mensajes.length == 0) && (
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginBottom: 16
+                }}
+              >
+                <Typography style={{ textAlign: "center" }}>Aún no tiene ningún mensaje cargado</Typography>
               </div>
+            )}
 
-              <div style={{ marginBottom: 16, display: "flex" }}>
-                <div style={{ flex: 1 }} />
+            {mensajes && mensajes.length != 0 && (
+              <DragDropContext onDragEnd={this.onDragEnd}>
+                <Droppable droppableId="droppable">
+                  {(provided, snapshot) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef} style={this.getListStyle(snapshot.isDraggingOver)}>
+                      {mensajes.map((item, index) => {
+                        const tieneTitulo = item.titulo && item.titulo.trim() != "";
 
-                <Button size="small" variant="outlined" color="primary" onClick={this.onBotonNuevoClick}>
-                  Nuevo
-                </Button>
-              </div>
+                        return (
+                          <Draggable key={item.id + ""} draggableId={item.id + ""} index={index}>
+                            {(provided, snapshot) => (
+                              <Card
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                style={this.getItemStyle(snapshot.isDragging, provided.draggableProps.style, item.visible)}
+                              >
+                                <div style={{ flex: 1, padding: 16 }}>
+                                  {tieneTitulo && <Typography variant={"subtitle2"}>{item.titulo.trim()}</Typography>}
+                                  <Typography variant="body1">{item.mensaje.trim()}</Typography>
+                                </div>
 
-              {(listaMensajes == undefined || listaMensajes.length == 0) && (
-                <div
-                  style={{
-                    padding: 16,
-                    borderRadius: 16,
-                    border: "1px solid rgba(0,0,0,0.1)",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginBottom: 16
-                  }}
-                >
-                  <Typography style={{ textAlign: "center" }}>Aún no tiene ningún mensaje cargado</Typography>
-                </div>
-              )}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    padding: 4,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    alignSelf: "baseline"
+                                  }}
+                                >
+                                  <IconButton
+                                    onClick={() => {
+                                      let m = this.state.mensajes;
+                                      m.forEach(m1 => {
+                                        if (m1.id == item.id) {
+                                          m1.visible = !m1.visible;
+                                        }
+                                      });
 
-              {listaMensajes &&
-                listaMensajes.length != 0 &&
-                listaMensajes.map((mensaje, index) => {
-                  return (
-                    <Card
-                      style={{
-                        display: "flex",
-                        padding: 16,
-                        marginBottom: 16,
-                        borderRadius: 16
-                      }}
-                      key={index}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <Typography>{mensaje.mensaje}</Typography>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={mensaje.visible || false}
-                              onChange={e => {
-                                let m = this.state.mensajes;
-                                m.forEach(m1 => {
-                                  if (m1.id == mensaje.id) {
-                                    m1.visible = e.target.checked;
-                                  }
-                                });
+                                      this.setState({
+                                        mensajes: [...m]
+                                      });
+                                    }}
+                                  >
+                                    {item.visible == true && <IconVisibilityOffOutlined style={{ fontSize: 16 }} />}
+                                    {item.visible != true && <IconVisibilityOutlined style={{ fontSize: 16 }} />}
+                                  </IconButton>
+                                  <IconButton
+                                    onClick={() => {
+                                      this.onBotonBorrarClick(item);
+                                    }}
+                                  >
+                                    <IconDeleteOutlined style={{ fontSize: 16 }} />
+                                  </IconButton>
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    style={{
+                                      margin: 0,
+                                      marginRight: 4,
+                                      padding: 8,
+                                      display: "flex",
+                                      justifyContent: "center",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    <IconDragIndicatorOutlined style={{ fontSize: 16 }} />
+                                  </div>
+                                </div>
+                              </Card>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            )}
 
-                                this.setState({
-                                  mensajes: [...m]
-                                });
-                              }}
-                            />
-                          }
-                          label="Visible"
-                        />
-                      </div>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginTop: 16 }}>
+              <Fab variant="extended" color="primary" onClick={this.onBotonGuardarClick}>
+                Guardar cambios
+              </Fab>
+            </div>
 
-                      <div>
-                        <IconButton
-                          onClick={() => {
-                            this.onBotonBorrarClick(mensaje);
-                          }}
-                        >
-                          <IconDeleteOutlined style={{ fontSize: 16 }} />
-                        </IconButton>
-                      </div>
-                    </Card>
-                  );
-                })}
+            <Footer evento={evento} />
+          </React.Fragment>
+        )}
 
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                <Fab size="small" variant="extended" color="primary" onClick={this.onBotonGuardarClick}>
-                  Guardar cambios
-                </Fab>
-              </div>
-            </React.Fragment>
-          )}
+        {/* Dialogo mensaje */}
+        <DialogoMensaje
+          visible={this.state.dialogoMensajeVisible || false}
+          titulo={this.state.dialogoMensajeTitulo || ""}
+          mensaje={this.state.dialogoMensajeMensaje || ""}
+          onClose={this.onDialogoMensajeClose}
+          botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
+          textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
+          onBotonSiClick={this.onDialogoMensajeBotonSiClick}
+          autoCerrarBotonSi={false}
+          botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
+          textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
+          onBotonNoClick={this.onDialogoMensajeBotonNoClick}
+          autoCerrarBotonNo={false}
+        />
 
-          {/* Dialogo mensaje */}
-          <DialogoMensaje
-            visible={this.state.dialogoMensajeVisible || false}
-            titulo={this.state.dialogoMensajeTitulo || ""}
-            mensaje={this.state.dialogoMensajeMensaje || ""}
-            onClose={this.onDialogoMensajeClose}
-            botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
-            textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
-            onBotonSiClick={this.onDialogoMensajeBotonSiClick}
-            autoCerrarBotonSi={false}
-            botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
-            textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
-            onBotonNoClick={this.onDialogoMensajeBotonNoClick}
-            autoCerrarBotonNo={false}
-          />
-
-          <DialogoForm
-            titulo="Nuevo mensaje"
-            visible={this.state.dialogoNuevoVisible || false}
-            inputs={[
-              {
-                key: "mensaje",
-                label: "Mensaje...."
-              }
-            ]}
-            textoNo="Cancelar"
-            textoSi="Crear"
-            autoCerrarBotonSi={false}
-            onClose={this.onDialogoNuevoClose}
-            onBotonSiClick={this.onDialogoNuevoBotonSiClick}
-          />
-        </MiPagina>
-      </MuiThemeProvider>
+        <DialogoForm
+          titulo="Nuevo mensaje"
+          visible={this.state.dialogoNuevoVisible || false}
+          inputs={[
+            {
+              key: "titulo",
+              label: "Titulo"
+            },
+            {
+              key: "mensaje",
+              label: "Mensaje"
+            }
+          ]}
+          textoNo="Cancelar"
+          textoSi="Crear"
+          autoCerrarBotonSi={false}
+          onClose={this.onDialogoNuevoClose}
+          onBotonSiClick={this.onDialogoNuevoBotonSiClick}
+        />
+      </MiPagina>
     );
   }
 }
