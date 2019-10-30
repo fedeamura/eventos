@@ -11,15 +11,31 @@ import { push } from "connected-react-router";
 //Componentes
 import Typography from "@material-ui/core/Typography";
 import Button from "@material-ui/core/Button";
-import _ from "lodash";
+import Lottie from "react-lottie";
+import _ from 'lodash';
 
 //Mis componentes
 import MiPagina from "@UI/_MiPagina";
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
+import Header from '@UI/_Header';
+import Footer from '@UI/_Footer';
+
+//Lotties
+import * as animSuccess from "@Resources/animaciones/anim_success.json";
+
+const lottieSuccess = {
+  loop: false,
+  autoplay: true,
+  animationData: animSuccess,
+  rendererSettings: {
+    preserveAspectRatio: "xMidYMid slice"
+  }
+};
 
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
+    evento: state.Evento.data
   };
 };
 
@@ -35,7 +51,9 @@ class Inscripcion extends React.Component {
 
     this.state = {
       cargando: true,
-      codigo: props.match.params.codigo
+      idActividad: props.match.params.idActividad,
+      evento: undefined,
+      actividad: undefined
     };
   }
 
@@ -45,11 +63,12 @@ class Inscripcion extends React.Component {
 
   inscribir = async () => {
     try {
-      const { codigo } = this.state;
+      const { evento } = this.props;
+      const { idActividad } = this.state;
       this.setState({ cargando: true });
 
       var db = window.firebase.firestore();
-      if (codigo == undefined || codigo == "" || codigo.split("_").length != 2) {
+      if (evento == undefined || idActividad == undefined || idActividad.trim() == "") {
         this.setState({ cargando: false });
         this.mostrarDialogoMensaje({
           autoCerrar: false,
@@ -64,10 +83,24 @@ class Inscripcion extends React.Component {
         return;
       }
 
-      let idEvento = codigo.split("_")[0].toLowerCase();
-      let idActividad = codigo.split("_")[1].toLowerCase();
-
       const { usuario } = this.props;
+
+      const actividad = _.find(evento.actividades, (x) => x.id == idActividad);
+      if (actividad == undefined) {
+        this.setState({ cargando: false });
+        this.mostrarDialogoMensaje({
+          autoCerrar: false,
+          mensaje: "El código QR escaneado es inválido",
+          botonSiMensaje: "Volver",
+          onBotonSiClick: () => {
+            setTimeout(() => {
+              this.props.redirect("/");
+            }, 300);
+          }
+        });
+        return;
+      }
+
 
       //Inscribo
       await db
@@ -84,18 +117,25 @@ class Inscripcion extends React.Component {
               photoURL: usuario.photoURL,
               uid: usuario.uid
             },
-            [idEvento]: {
-              inscripto: true,
-              [idActividad]: {
+            eventos: {
+              [evento.id]: {
                 inscripto: true,
-                fecha: new Date()
+                actividades: {
+                  [idActividad]: {
+                    inscripto: true,
+                    fecha: new Date()
+                  }
+                }
               }
             }
           },
           { merge: true }
         );
 
-      this.setState({ cargando: false, data: true });
+      this.setState({
+        cargando: false,
+        actividad
+      });
     } catch (ex) {
       this.setState({ cargando: false });
 
@@ -121,15 +161,18 @@ class Inscripcion extends React.Component {
   };
 
   onBotonActividadClick = () => {
-    let idEvento = this.state.codigo.split("_")[0];
-    let idActividad = this.state.codigo.split("_")[1];
-    this.props.redirect("/Actividad/" + idEvento + "/" + idActividad);
+    const { evento } = this.props;
+    const { actividad } = this.state;
+    if (evento.conActividades == true) {
+      this.props.redirect(`/${evento.id}/Data/${actividad.id}`);
+    } else {
+      this.props.redirect(`/${evento.id}`);
+    }
   };
 
-  onBotonBackClick = () => {
-    let idEvento = this.state.codigo.split("_")[0];
-    this.props.redirect("/Evento/" + idEvento);
-  };
+  onTituloClick = () => {
+
+  }
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -176,26 +219,47 @@ class Inscripcion extends React.Component {
   };
 
   render() {
-    const { cargando, data } = this.state;
+    const { evento } = this.props;
+    const { cargando, actividad } = this.state;
+    if (evento == undefined) return <div />;
 
     return (
       <MiPagina
         cargando={cargando || false}
-        toolbarSubtitulo="Inscripción a una actividad"
-        toolbarLeftIconVisible={true}
-        toolbarLeftIconClick={this.onBotonBackClick}
+        toolbarLeftIconVisible={false}
+        onToolbarTituloClick={this.onTituloClick}
       >
-        {data && (
-          <div style={{ padding: 16, display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-            <Typography style={{ textAlign: "center", marginBottom: 16 }} variant="h5">
-              Te inscribiste con éxito en la actividad
-            </Typography>
-            <Typography style={{ textAlign: "center", marginBottom: 32 }}>Además, ya estas participando en un sorteo</Typography>
+        {evento && actividad && (
+          <React.Fragment>
+            <Header evento={evento} />
 
-            <Button onClick={this.onBotonActividadClick} size="small" variant="contained" color="primary">
-              Ver actividad
-            </Button>
-          </div>
+            <div style={{
+              border: '1px solid rgba(0,0,0,0.1)',
+              borderRadius: 16,
+              padding: 16,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              flexDirection: "column"
+            }}>
+
+              <Lottie options={lottieSuccess} height={180} width={180} style={{ minHeight: "180px", marginBottom: 16 }} />
+
+              <Typography style={{ textAlign: "center", marginBottom: 16 }} variant="h5">
+                {evento.conActividades == false ? `Te inscribiste con éxito en el evento ${evento.nombre}` : `Te escribiste con éxito en la actividad ${actividad.nombre}`}
+              </Typography>
+              <Typography style={{ textAlign: "center", marginBottom: 32 }}>Además, ya estas participando en un sorteo</Typography>
+
+              <Button onClick={this.onBotonActividadClick} size="small" variant="contained" color="primary">
+                {evento.conActividades == false ? 'Ver el evento' : 'Ver la actividad'}
+              </Button>
+            </div>
+
+            <Footer evento={evento} />
+
+
+          </React.Fragment>
+
         )}
 
         <DialogoMensaje

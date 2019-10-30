@@ -13,7 +13,12 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 //Mis componentes
 import DialogoMensaje from "@Componentes/MiDialogoMensaje";
 
+//Recursos
 import logo from '../../_Resources/imagenes/logo.png';
+
+//Icons
+import MdiIcon from "@mdi/react";
+import { mdiGoogle, mdiFacebook, mdiTwitter, mdiGithubCircle } from "@mdi/js";
 
 class PanelLogin extends React.Component {
   constructor(props) {
@@ -134,7 +139,6 @@ class PanelLogin extends React.Component {
 
     return (
       <div className={classes.root}>
-        {this.state.error && <Typography>{this.state.error}</Typography>}
 
         <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32 }}>
           <img
@@ -147,18 +151,38 @@ class PanelLogin extends React.Component {
           Debe iniciar sesion para continuar
         </Typography>
         <div className="botones">
-          <Button className="boton" variant="outlined" size="small" onClick={this.onBotonGoogleClick}>
-            Google
+          <Button
+            style={{ backgroundColor: '#4285F4', color: 'white' }}
+            className="boton" variant="outlined" size="small" onClick={this.onBotonGoogleClick}>
+            <MdiIcon path={mdiGoogle} title="Google" size={1} style={{ marginRight: 8 }} color="white" />
+            <div style={{ width: 80 }}>
+              Google
+            </div>
           </Button>
-          <Button className="boton" variant="outlined" size="small" onClick={this.onBotonFacebookClick}>
-            Facebook
+          <Button
+            style={{ backgroundColor: '#4267B2', color: 'white' }}
+            className="boton" variant="outlined" size="small" onClick={this.onBotonFacebookClick}>
+            <MdiIcon path={mdiFacebook} title="Facebook" size={1} style={{ marginRight: 8 }} color="white" />
+            <div style={{ width: 80 }}>
+              Facebook
+            </div>
           </Button>
-          <Button className="boton" variant="outlined" size="small" onClick={this.onBotonTwitterClick}>
-            Twitter
+          <Button
+            style={{ backgroundColor: '#1DA1F2', color: 'white' }}
+            className="boton" variant="outlined" size="small" onClick={this.onBotonTwitterClick}>
+            <MdiIcon path={mdiTwitter} title="Twitter" size={1} style={{ marginRight: 8 }} color="white" />
+            <div style={{ width: 80 }}>
+              Twitter
+            </div>
           </Button>
 
-          <Button className="boton" variant="outlined" size="small" onClick={this.onBotonGitHubClick}>
-            GitHub
+          <Button
+            style={{ backgroundColor: '#24292e', color: 'white' }}
+            className="boton" variant="outlined" size="small" onClick={this.onBotonGitHubClick}>
+            <MdiIcon path={mdiGithubCircle} title="GitHub" size={1} style={{ marginRight: 8 }} color="white" />
+            <div style={{ width: 80 }}>
+              GitHub
+            </div>
           </Button>
         </div>
 

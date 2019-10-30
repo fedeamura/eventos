@@ -1,11 +1,15 @@
-import { createHashHistory } from "history";
+// import { createHashHistory } from "history";
+import { createBrowserHistory } from "history";
 import { applyMiddleware, compose, createStore } from "redux";
 import { routerMiddleware } from "connected-react-router";
 import rootReducer from "@Redux/Reducers/index";
 
-export const history = createHashHistory({
+export const history = createBrowserHistory({
   basename: ""
 });
+// export const history = createHashHistory({
+//   basename: ""
+// });
 
 export default function configureStore(preloadedState) {
   const store = createStore(

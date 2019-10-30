@@ -28,14 +28,16 @@ class MiPagina extends React.PureComponent {
       <React.Fragment>
         <div className={classes.root}>
           <MiToolbar
-            leftIconClick={this.props.toolbarLeftIconClick}
+            leftIconClick={this.props.onToolbarLeftIconClick}
             leftIcon={this.props.toolbarLeftIcon}
             leftIconClassName={this.props.toolbarLeftIconClassName}
             leftIconVisible={this.props.toolbarLeftIconVisible}
+            leftIconRender={this.props.toolbarLeftIconRender}
             breadcrumbs={this.props.toolbarBreadcrumbs || []}
             cargando={this.props.cargando}
             className={this.props.toolbarClassName}
             renderLogo={this.props.toolbarRenderLogo}
+            renderTitulo={this.props.toolbarRenderTitulo}
             titulo={this.props.toolbarTitulo}
             subtitulo={this.props.toolbarSubtitulo}
             onTituloClick={this.props.onToolbarTituloClick}

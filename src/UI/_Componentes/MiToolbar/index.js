@@ -43,7 +43,7 @@ class MiToolbar extends React.Component {
     };
   }
 
-  componentDidMount() {}
+  componentDidMount() { }
 
   onUsuarioPress = event => {
     if (this.props.cargando) return;
@@ -69,11 +69,11 @@ class MiToolbar extends React.Component {
     return (
       <AppBar position="absolute" className={classNames(classes.appBar)}>
         <Toolbar disableGutters={true} className={classNames(classes.toolbar, this.props.className)}>
-          {this.props.renderLeftIcon !== undefined && this.props.renderLeftIcon()}
+          {this.props.leftIconRender !== undefined && (this.props.leftIconRender)}
 
           {this.props.leftIconVisible == true && (
             <React.Fragment>
-              {this.props.renderLeftIcon === undefined && this.props.leftIcon !== undefined && (
+              {this.props.leftIconRender === undefined && this.props.leftIcon !== undefined && (
                 <IconButton
                   className={this.props.leftIconClassName}
                   color="inherit"
@@ -92,16 +92,19 @@ class MiToolbar extends React.Component {
           {/* Cuerpo */}
           <div className={classes.contenedorCuerpo}>
             <div className={classes.contenedorTitulo}>
-              <Typography
-                variant="h6"
-                color="inherit"
-                className={"titulo"}
-                noWrap
-                onClick={this.props.onTituloClick}
-                style={{ cursor: "pointer" }}
-              >
-                {titulo}
-              </Typography>
+              {this.props.renderTitulo && (this.props.renderTitulo)}
+              {this.props.renderTitulo == undefined && (
+                <Typography
+                  variant="h6"
+                  color="inherit"
+                  className={"titulo"}
+                  noWrap
+                  onClick={this.props.onTituloClick}
+                  style={{ cursor: "pointer" }}
+                >
+                  {titulo}
+                </Typography>
+              )}
               {subtitulo && (
                 <Typography className="subtitulo" variant="subtitle1" color="inherit" noWrap>
                   {subtitulo}

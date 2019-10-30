@@ -6,7 +6,7 @@ import { withStyles } from "@material-ui/core/styles";
 
 //REDUX
 import { connect } from "react-redux";
-import { push } from "connected-react-router";
+import { push, goBack } from "connected-react-router";
 
 //Componentes
 import Webcam from "react-webcam";
@@ -32,6 +32,9 @@ const mapStateToProps = state => {
 const mapDispatchToProps = dispatch => ({
   redirect: url => {
     dispatch(push(url));
+  },
+  goBack: () => {
+    dispatch(goBack());
   }
 });
 
@@ -106,8 +109,13 @@ class ScanQR extends React.Component {
   };
 
   onBotonBackClick = () => {
-    this.props.redirect("/");
+    this.props.goBack();
   };
+
+  onTituloClick = () => {
+
+  }
+
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -187,9 +195,9 @@ class ScanQR extends React.Component {
       <MiPagina
         full
         cargando={cargando || false}
-        toolbarSubtitulo="Escanear código QR"
         toolbarLeftIconVisible={true}
-        toolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarTituloClick={this.onTituloClick}
       >
         {error != undefined && <Typography>{error}</Typography>}
 

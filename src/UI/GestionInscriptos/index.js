@@ -4,8 +4,6 @@ import React from "react";
 import styles from "./styles";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
-import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
@@ -86,10 +84,13 @@ class GestionInscriptos extends React.Component {
       if (this.props.eventos == undefined) {
         this.props.setEventosGestionInit();
 
+        const email = this.props.usuario.email;
+        var path = new window.firebase.firestore.FieldPath('roles', email);
+
         const db = window.firebase.firestore();
         let data = await db
           .collection("eventos")
-          .where("roles." + this.props.usuario.uid, ">=", 2)
+          .where(path, ">=", 2)
           .get();
 
         let eventos = data.docs.map(x => x.data());
@@ -103,7 +104,7 @@ class GestionInscriptos extends React.Component {
           mensaje: "No tiene el permiso necesario para realizar esta operación",
           onBotonSiClick: () => {
             setTimeout(() => {
-              this.props.redirect("/Gestion");
+              this.onBotonBackClick();
             }, 300);
           }
         });
@@ -116,13 +117,14 @@ class GestionInscriptos extends React.Component {
         .collection("info")
         .doc("inscripciones")
         .collection("porUsuario")
-        .where(idEvento + ".inscripto", "==", true)
+        .where(`eventos.${idEvento}.inscripto`, "==", true)
         .get();
 
       let data = docs.docs.map(x => x.data());
+      console.log(data);
 
       let inscriptosDeEvento = _.filter(data, x => {
-        return x[idEvento] != undefined;
+        return (x.eventos || {})[idEvento] != undefined;
       });
 
       inscriptosDeEvento = inscriptosDeEvento.map(x => {
@@ -160,28 +162,12 @@ class GestionInscriptos extends React.Component {
     this.props.redirect("/Gestion/Panel/" + this.state.idEvento);
   };
 
-  onBotonExportarClick = () => {};
+  onTituloClick = () => {
+    this.props.redirect('/Gestion/');
+  }
 
   getEvento = memoize((eventos, idEvento) => {
     return _.find(eventos, x => x.id == idEvento);
-  });
-
-  getTheme = memoize(color => {
-    if (color == undefined) return createMuiTheme(themeData);
-    return createMuiTheme({
-      ...themeData,
-      palette: {
-        ...themeData.palette,
-        primary: {
-          ...themeData.palette.main,
-          main: color
-        },
-        secondary: {
-          ...themeData.palette.secondary,
-          main: color
-        }
-      }
-    });
   });
 
   generarCsv = memoize(data => {
@@ -251,81 +237,75 @@ class GestionInscriptos extends React.Component {
         paginaCargando = true;
       }
     }
-
-    const color = evento && evento.color;
-    const theme = this.getTheme(color);
-
     const csvData = this.generarCsv(inscriptos);
 
     return (
-      <MuiThemeProvider theme={theme}>
-        <MiPagina
-          cargando={paginaCargando || false}
-          toolbarTitulo="Inscriptos"
-          toolbarLeftIconVisible={true}
-          toolbarLeftIconClick={this.onBotonBackClick}
-        >
-          {evento && (
-            <React.Fragment>
-              <Header evento={evento} />
+      <MiPagina
+        cargando={paginaCargando || false}
+        toolbarLeftIconVisible={true}
+        onToolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarTituloClick={this.onTituloClick}
+      >
+        {evento && (
+          <React.Fragment>
+            <Header evento={evento} />
 
-              {/* Participantes */}
-              {inscriptos && inscriptos.length != 0 && (
-                <React.Fragment>
-                  <div style={{ display: "flex", marginBottom: 16 }}>
-                    <div style={{ flex: 1 }} />
-                    <div>
-                      {csvData && (
-                        <CSVLink data={csvData} headers={CVS_HEADERS} filename={"Inscriptos.csv"} style={{ textDecoration: "none" }}>
-                          <Button variant="outlined" size="small" style={{ textDecoration: "none" }}>
-                            Descargar
+            {/* Participantes */}
+            {inscriptos && inscriptos.length != 0 && (
+              <React.Fragment>
+                <div style={{ display: "flex", marginBottom: 16 }}>
+                  <div style={{ flex: 1 }} />
+                  <div>
+                    {csvData && (
+                      <CSVLink data={csvData} headers={CVS_HEADERS} filename={"Inscriptos.csv"} style={{ textDecoration: "none" }}>
+                        <Button variant="outlined" size="small" style={{ textDecoration: "none" }}>
+                          Descargar
                           </Button>
-                        </CSVLink>
-                      )}
-                    </div>
+                      </CSVLink>
+                    )}
                   </div>
+                </div>
 
-                  <Card style={{ borderRadius: 16 }}>
-                    <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
-                      Inscriptos
+                <Card style={{ borderRadius: 16 }}>
+                  <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
+                    Inscriptos
                     </Typography>
-                    <List>
-                      {inscriptos.map((x, key) => {
-                        return (
-                          <ListItem button key={key}>
-                            <ListItemAvatar>
-                              <Avatar src={x.photoURL}></Avatar>
-                            </ListItemAvatar>
-                            <ListItemText>{x.nombre}</ListItemText>
-                          </ListItem>
-                        );
-                      })}
-                    </List>
-                  </Card>
-                </React.Fragment>
-              )}
+                  <List>
+                    {inscriptos.map((x, key) => {
+                      return (
+                        <ListItem button key={key}>
+                          <ListItemAvatar>
+                            <Avatar src={x.photoURL}></Avatar>
+                          </ListItemAvatar>
+                          <ListItemText>{x.nombre}</ListItemText>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Card>
+              </React.Fragment>
+            )}
 
-              <Footer evento={evento} />
-            </React.Fragment>
-          )}
+            <Footer evento={evento} />
+          </React.Fragment>
+        )}
 
-          {/* Dialogo mensaje */}
-          <DialogoMensaje
-            visible={this.state.dialogoMensajeVisible || false}
-            titulo={this.state.dialogoMensajeTitulo || ""}
-            mensaje={this.state.dialogoMensajeMensaje || ""}
-            onClose={this.onDialogoMensajeClose}
-            botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
-            textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
-            onBotonSiClick={this.onDialogoMensajeBotonSiClick}
-            autoCerrarBotonSi={false}
-            botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
-            textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
-            onBotonNoClick={this.onDialogoMensajeBotonNoClick}
-            autoCerrarBotonNo={false}
-          />
-        </MiPagina>
-      </MuiThemeProvider>
+        {/* Dialogo mensaje */}
+        <DialogoMensaje
+          visible={this.state.dialogoMensajeVisible || false}
+          titulo={this.state.dialogoMensajeTitulo || ""}
+          mensaje={this.state.dialogoMensajeMensaje || ""}
+          onClose={this.onDialogoMensajeClose}
+          botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
+          textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
+          onBotonSiClick={this.onDialogoMensajeBotonSiClick}
+          autoCerrarBotonSi={false}
+          botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
+          textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
+          onBotonNoClick={this.onDialogoMensajeBotonNoClick}
+          autoCerrarBotonNo={false}
+        />
+      </MiPagina>
     );
   }
 }

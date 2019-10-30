@@ -54,7 +54,7 @@ const mapDispatchToProps = dispatch => ({
   }
 });
 
-class GestionMensajes extends React.Component {
+class GestionRoles extends React.Component {
   constructor(props) {
     super(props);
 
@@ -158,12 +158,8 @@ class GestionMensajes extends React.Component {
   };
 
   onBotonBackClick = () => {
-    this.props.redirect(`/Gestion/Panel/${this.state.idEvento}`);
+    this.props.redirect("/Gestion/Panel/" + this.state.idEvento);
   };
-
-  onTituloClick = () => {
-    this.props.redirect('/Gestion/');
-  }
 
   getListaReordenada = (list, startIndex, endIndex) => {
     const result = Array.from(list);
@@ -179,7 +175,13 @@ class GestionMensajes extends React.Component {
     marginBottom: 8,
     display: "flex",
     opacity: visible == true ? 1 : 0.4,
+    // padding: 8 * 2,
+    // margin: `0 0 ${8}px 0`,
+
+    // change background colour if dragging
     background: isDragging ? "#eee" : "white",
+
+    // styles we need to apply on draggables
     ...draggableStyle
   });
 
@@ -347,7 +349,6 @@ class GestionMensajes extends React.Component {
         cargando={cargandoPagina || false}
         toolbarLeftIconVisible={true}
         onToolbarLeftIconClick={this.onBotonBackClick}
-        onToolbarTituloClick={this.onTituloClick}
       >
         {evento && mensajes && (
           <React.Fragment>
@@ -507,7 +508,7 @@ class GestionMensajes extends React.Component {
   }
 }
 
-let componente = GestionMensajes;
+let componente = GestionRoles;
 componente = withStyles(styles)(componente);
 componente = connect(
   mapStateToProps,

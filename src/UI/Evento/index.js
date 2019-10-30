@@ -3,8 +3,6 @@ import React from "react";
 //Styles
 import styles from "./styles";
 import { withStyles } from "@material-ui/core/styles";
-import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
@@ -28,9 +26,6 @@ import MiPagina from "@UI/_MiPagina";
 import Header from "@UI/_Header";
 import Footer from "@UI/_Footer";
 
-//Rules
-import Rules_Evento from "../../Rules/Rules_Evento";
-
 //Icons
 import IconMessageOutlined from "@material-ui/icons/MessageOutlined";
 import MdiIcon from "@mdi/react";
@@ -51,12 +46,10 @@ const lottieGanador = {
 const mapStateToProps = state => {
   return {
     usuario: state.Usuario.usuario,
-    eventos: state.Eventos.data,
-    eventosCargando: state.Eventos.cargando,
-    eventosReady: state.Eventos.ready,
-    ganadores: state.Eventos.ganadores,
-    mensajes: state.Eventos.mensajes,
-    inscripciones: state.Usuario.inscripciones
+    inscripciones: state.Usuario.inscripciones,
+    evento: state.Evento.data,
+    ganadores: state.Evento.ganadores,
+    mensajes: state.Evento.mensajes,
   };
 };
 
@@ -69,109 +62,80 @@ const mapDispatchToProps = dispatch => ({
 class Evento extends React.Component {
   constructor(props) {
     super(props);
-
-    this.state = {
-      id: props.match.params.id
-    };
-  }
-
-  componentDidMount() {
-    Rules_Evento.escucharGanadores(this.state.id);
-    Rules_Evento.escucharMensajes(this.state.id);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    let id = nextProps.match.params.id;
-    if (id != this.state.id) {
-      this.setState({ id });
-      Rules_Evento.escucharGanadores(id);
-      Rules_Evento.escucharMensajes(id);
-    }
   }
 
   onActividadClick = a => {
-    this.props.redirect("/Actividad/" + this.state.id + "/" + a.id);
+    const { evento } = this.props;
+    this.props.redirect(`/${evento.id}/Data/${a.id}`);
   };
 
   onBotonScanClick = () => {
-    this.props.redirect("/ScanQR");
+    const { evento } = this.props;
+    this.props.redirect(`/${evento.id}/ScanQR`);
   };
 
-  onBotonBackClick = () => {
-    this.props.redirect("/");
-  };
+  onTituloClick = () => {
 
-  getEvento = memoize((data, id) => {
-    if (data == undefined || id == undefined) return undefined;
-    return _.find(data, x => x.id == id);
-  });
+  }
 
-  getGrupos = memoize(data => {
-    if (data == undefined) return [];
+  getGrupos = memoize(evento => {
+    if (evento == undefined) return [];
 
-    let actividades = Object.keys(data.actividades || {}).map(key => {
-      return data.actividades[key];
-    });
+    const actividades = evento.actividades || [];
     let actividadesPorGrupo = _.groupBy(actividades, "grupo");
     return _.orderBy(Object.keys(actividadesPorGrupo));
   });
 
-  getActividades = memoize((data, grupo) => {
-    if (data == undefined || grupo == undefined) return [];
-
-    let actividades = Object.keys(data.actividades || {}).map(key => {
-      return data.actividades[key];
-    });
+  getActividades = memoize((evento, grupo) => {
+    if (evento == undefined || grupo == undefined) return [];
+    let actividades = evento.actividades || [];
     actividades = actividades.filter(x => x.grupo == grupo);
     return _.orderBy(actividades, x => (x.nombre || "").toLowerCase());
   });
 
-  getMensajes = memoize((mensajes, evento) => {
-    if (mensajes == undefined || evento == undefined) return [];
-    return _.filter(mensajes[evento] || [], x => x.visible == true);
+  getMensajes = memoize((mensajes) => {
+    if (mensajes == undefined) return [];
+    return _.filter(mensajes, x => x.visible == true);
   });
 
-  esGanador = memoize((ganadores, idEvento, uid) => {
-    if (ganadores == undefined || idEvento == undefined || uid == undefined) return false;
-    if (ganadores[idEvento] == undefined) return false;
-    const ganadoresDeEvento = ganadores[idEvento];
-    return _.find(ganadoresDeEvento, x => x.uid == uid) != undefined;
+  esGanador = memoize((ganadores, uid) => {
+    if (ganadores == undefined || uid == undefined) return false;
+    return _.find(ganadores, x => x.uid == uid) != undefined;
+  });
+
+  estaInscripto = memoize((inscripciones) => {
+    if (inscripciones == undefined) return false;
+    return inscripciones.length != 0;
   });
 
   estaInscriptoEnActividad = memoize((inscripciones, idEvento, idActividad) => {
     if (inscripciones == undefined || idEvento == undefined || idActividad == undefined) return false;
-
-    let inscripcionesDeEvento = inscripciones[idEvento];
-    if (inscripcionesDeEvento == undefined) return false;
-    return inscripcionesDeEvento.indexOf(idActividad) != -1;
+    return inscripciones.indexOf(idActividad) != -1;
   });
 
   render() {
-    const { id } = this.state;
-    const { usuario, eventos, eventosReady, eventosCargando, ganadores, inscripciones, mensajes } = this.props;
+    const { usuario, evento, ganadores, inscripciones, mensajes } = this.props;
+    if (evento == undefined) return <div />;
 
-    const evento = this.getEvento(eventos, id);
     const grupos = this.getGrupos(evento);
-    const listaMensajes = this.getMensajes(mensajes, id);
-    const esGanador = this.esGanador(ganadores, id, usuario.uid);
-    const color = evento && evento.color;
+    const listaMensajes = this.getMensajes(mensajes);
+    const esInscripto = this.estaInscripto(inscripciones);
+    const esGanador = this.esGanador(ganadores, usuario.uid);
 
     return (
       <MiPagina
-        cargando={eventosCargando || false}
-        toolbarSubtitulo={evento ? evento.nombre : "..."}
-        toolbarLeftIconVisible={true}
-        toolbarLeftIconClick={this.onBotonBackClick}
+        toolbarLeftIconVisible={false}
+        onToolbarTituloClick={this.onTituloClick}
       >
-        {eventosReady && (
+        {evento && (
           <React.Fragment>
-            {evento == undefined && <Typography>No existe</Typography>}
+            <React.Fragment>
+              <Header evento={evento} />
 
-            {/* Cargue los eventos  */}
-            {evento && (
-              <React.Fragment>
+              {/* Esta inscripto */}
+              {esInscripto == true && (
+
                 <React.Fragment>
-                  <Header evento={evento} />
 
                   {/* Ganadores */}
                   {esGanador == true && (
@@ -213,7 +177,7 @@ class Evento extends React.Component {
                           const mensaje = tieneTitulo ? x.mensaje.trim() : "";
 
                           return (
-                            <ListItem key={indexMensaje} divider>
+                            <ListItem key={indexMensaje} divider={indexMensaje != listaMensajes.length - 1}>
                               <ListItemText primary={titulo} secondary={mensaje} />
                             </ListItem>
                           );
@@ -253,6 +217,7 @@ class Evento extends React.Component {
                     grupos &&
                     grupos.map((grupo, indexGrupo) => {
                       const actividades = this.getActividades(evento, grupo);
+                      console.log('Actividades', actividades);
 
                       let colorGrupo = undefined;
                       if (actividades.length != 0) {
@@ -305,36 +270,48 @@ class Evento extends React.Component {
                       );
                     })}
 
-                  {/* Sponsors */}
-                  <Footer evento={evento} />
-
-                  {evento.conActividades == true && (
-                    <React.Fragment>
-                      {/* Espacio para que se vea el boton */}
-                      <div style={{ height: 72 }} />
-
-                      {/* Boton escanear */}
-                      <Fab
-                        color="primary"
-                        variant="extended"
-                        onClick={this.onBotonScanClick}
-                        style={{
-                          position: "absolute",
-                          right: 16,
-                          bottom: 16,
-                          backgroundColor: color
-                        }}
-                      >
-                        <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} style={{ marginRight: 8 }} color="black" />
-                        Escanear
-                      </Fab>
-                    </React.Fragment>
-                  )}
                 </React.Fragment>
-              </React.Fragment>
-            )}
+              )}
+
+              {/* No inscripto */}
+              {esInscripto == false && (
+                <div
+                  style={{
+                    marginTop: 32,
+                    padding: 16,
+                    borderRadius: 16,
+                    border: "1px solid rgba(0,0,0, 0.1)"
+                  }}
+                >
+                  <Typography style={{ textAlign: "center" }}>No estás inscripto en el evento</Typography>
+                </div>
+              )}
+
+              {/* Sponsors */}
+              <Footer evento={evento} />
+
+              {/* Espacio para que se vea el boton */}
+              <div style={{ height: 72 }} />
+
+              {/* Boton escanear */}
+              <Fab
+                color="primary"
+                variant="extended"
+                onClick={this.onBotonScanClick}
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  bottom: 16
+                }}
+              >
+                <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} style={{ marginRight: 8 }} color="black" />
+                Escanear QR
+              </Fab>
+
+            </React.Fragment>
           </React.Fragment>
         )}
+
       </MiPagina>
     );
   }

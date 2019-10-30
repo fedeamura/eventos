@@ -50,7 +50,7 @@ class GestionPanel extends React.Component {
     };
   }
 
-  componentDidMount() {}
+  componentDidMount() { }
 
   componentWillReceiveProps(nextProps) {
     let id = nextProps.match.params.id;
@@ -60,19 +60,23 @@ class GestionPanel extends React.Component {
   }
 
   onBotonBackClick = () => {
-    this.props.redirect("/Gestion");
+    this.props.redirect(`/Gestion`);
   };
 
+  onTituloClick = () => {
+    this.props.redirect('/Gestion/');
+  }
+
   onBotonSortearClick = () => {
-    this.props.redirect("/Gestion/Sorteo/" + this.state.id);
+    this.props.redirect(`/Gestion/Sorteo/${this.state.id}`);
   };
 
   onBotonInscriptosClick = () => {
-    this.props.redirect("/Gestion/Inscriptos/" + this.state.id);
+    this.props.redirect(`/Gestion/Inscriptos/${this.state.id}`);
   };
 
   onBotonMensajeClick = () => {
-    this.props.redirect("/Gestion/Mensajes/" + this.state.id);
+    this.props.redirect(`/Gestion/Mensajes/${this.state.id}`);
   };
 
   render() {
@@ -81,9 +85,9 @@ class GestionPanel extends React.Component {
     return (
       <MiPagina
         cargando={false}
-        toolbarSubtitulo={"Panel de gestión"}
         toolbarLeftIconVisible={true}
-        toolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarTituloClick={this.onTituloClick}
       >
         <Grid spacing={2} container>
           <Grid item xs={12} md={6}>

@@ -21,14 +21,11 @@ import Footer from "@UI/_Footer";
 //Iconos
 import IconCheckBox from "@material-ui/icons/CheckBox";
 import IconCheckBoxBlank from "@material-ui/icons/CheckBoxOutlineBlank";
-import { green } from "@material-ui/core/colors";
 
 const mapStateToProps = state => {
   return {
     usuario: state.Usuario.usuario,
-    eventos: state.Eventos.data,
-    eventosReady: state.Eventos.ready,
-    eventosCargando: state.Eventos.cargando,
+    evento: state.Evento.data,
     inscripciones: state.Usuario.inscripciones
   };
 };
@@ -44,69 +41,45 @@ class Actividad extends React.Component {
     super(props);
 
     this.state = {
-      idEvento: props.match.params.idEvento,
       idActividad: props.match.params.idActividad
     };
   }
 
-  componentWillReceiveProps(nextProps) {
-    let idEvento = nextProps.match.params.idEvento;
-    let idActividad = nextProps.match.params.idActividad;
-    if (idEvento != this.state.idEvento) {
-      this.setState({ idEvento });
-    }
-
-    if (idActividad != this.state.idActividad) {
-      this.setState({ idActividad });
-    }
-  }
-
   onBotonBackClick = () => {
-    this.props.redirect("/Evento/" + this.state.idEvento);
+    const { evento } = this.props;
+    this.props.redirect(`/${evento.id}`);
   };
 
-  getEvento = memoize((data, idEvento) => {
-    if (data == undefined || idEvento == undefined) return undefined;
-    return _.find(data, x => x.id == idEvento);
-  });
+  onTituloClick = () => {
+    const { evento } = this.props;
+    this.props.redirect(`/${evento.id}`);
+  }
 
-  getActividad = memoize((data, idEvento, idActividad) => {
-    let evento = this.getEvento(data, idEvento);
-    if (evento == undefined) return undefined;
-
+  getActividad = memoize((evento, idActividad) => {
     let actividades = evento.actividades || [];
     return _.find(actividades, x => x.id == idActividad);
   });
 
-  estaInscriptoEnActividad = memoize((inscripciones, idEvento, idActividad) => {
-    if (inscripciones == undefined || idEvento == undefined || idActividad == undefined) return false;
-
-    let inscripcionesDeEvento = inscripciones[idEvento];
-    if (inscripcionesDeEvento == undefined) return false;
-    return inscripcionesDeEvento.indexOf(idActividad) != -1;
+  estaInscriptoEnActividad = memoize((inscripciones, idActividad) => {
+    if (inscripciones == undefined || idActividad == undefined) return false;
+    return inscripciones.indexOf(idActividad) != -1;
   });
 
   render() {
-    const { eventos, eventosReady, eventosCargando, inscripciones } = this.props;
-    const { idEvento, idActividad } = this.state;
+    const { evento, inscripciones } = this.props;
+    const { idActividad } = this.state;
+    if (evento == undefined) return <div />;
 
-    const evento = this.getEvento(eventos, idEvento);
-    if (evento && evento.conActividades == false) {
-      console.log("lalala");
-
-      this.props.redirect("/Evento" + idEvento);
-    }
-    const actividad = this.getActividad(eventos, idEvento, idActividad);
-    const estaInscripto = this.estaInscriptoEnActividad(inscripciones, idEvento, idActividad);
+    const actividad = this.getActividad(evento, idActividad);
+    const estaInscripto = this.estaInscriptoEnActividad(inscripciones, idActividad);
 
     return (
       <MiPagina
-        cargando={eventosCargando || false}
-        toolbarSubtitulo={evento ? evento.nombre : "..."}
         toolbarLeftIconVisible={true}
-        toolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarTituloClick={this.onTituloClick}
       >
-        {eventosReady == true && (
+        {evento && (
           <React.Fragment>
             {/* La actividad no existe */}
             {actividad == undefined && <Typography>La actividad no existe </Typography>}

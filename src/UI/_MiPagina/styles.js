@@ -18,20 +18,20 @@ const styles = theme => {
       },
       color: "black"
     },
-    logoMuni: {
-      marginRight: "8px",
-      backgroundPosition: "center",
-      minWidth: "40px",
-      maxWidth: "40px",
-      minHeight: "40px",
-      maxHeight: "40px",
-      backgroundRepeat: "no-repeat",
-      backgroundSize: "contain",
-      [theme.breakpoints.up("md")]: {
-        marginRight: "16px",
-        flexDirection: "row",
-        minWidth: "126px",
-        maxWidth: "126px"
+    children: {
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      cursor: "pointer",
+      [theme.breakpoints.down('sm')]: {
+        justifyContent: 'center',
+      },
+      '& > .icono': {
+        marginRight: 8
+      },
+      '*': {
+        cursor: "pointer"
       }
     }
   };

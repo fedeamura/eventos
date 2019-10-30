@@ -49,7 +49,7 @@ class Inicio extends React.Component {
   }
 
   onEventoClick = data => {
-    this.props.redirect("/Evento/" + data.id);
+    this.props.redirect(data.id);
   };
 
   onBotonScanClick = () => {
@@ -60,7 +60,9 @@ class Inicio extends React.Component {
     const { classes, eventos, eventosReady, eventosCargando } = this.props;
 
     return (
-      <MiPagina cargando={eventosCargando || false} toolbarLeftIconVisible={false}>
+      <MiPagina
+        cargando={eventosCargando || false}
+        toolbarLeftIconVisible={false}>
 
         {eventosReady && (
 
@@ -112,8 +114,11 @@ class Inicio extends React.Component {
                   })}
 
                 {/* Boton escanear */}
-                <Fab color="primary" onClick={this.onBotonScanClick} style={{ position: "absolute", right: 16, bottom: 16 }}>
-                  <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} color="white" />
+                <Fab
+                  variant="extended"
+                  color="primary" onClick={this.onBotonScanClick} style={{ position: "absolute", right: 16, bottom: 16 }}>
+                  <MdiIcon path={mdiQrcodeScan} title="Escanear código QR" size={1} color="black" style={{ marginRight: 8 }} />
+                  Escanear QR
                 </Fab>
               </div>
             )}

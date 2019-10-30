@@ -54,33 +54,39 @@ class Gestion extends React.Component {
 
   init = async () => {
     try {
-
       if (this.props.eventos == undefined) {
         this.props.setEventosGestionInit();
 
         const db = window.firebase.firestore();
+        const email = this.props.usuario.email;
+        var path = new window.firebase.firestore.FieldPath('roles', email);
         let data = await db
           .collection('eventos')
-          .where('roles.' + this.props.usuario.uid, '>=', 2)
+          .where(path, '>=', 2)
           .get();
 
-
         let eventos = data.docs.map(x => x.data());
+
         this.props.setEventosGestion(eventos);
       }
     } catch (ex) {
       let mensaje = typeof ex === 'object' ? ex.message : ex;
+      console.log(ex);
       this.props.setEventosGestion(undefined);
     }
   }
 
   onEventoClick = (evento) => {
-    this.props.redirect('/Gestion/Panel/' + evento.id)
+    this.props.redirect(`/Gestion/Panel/${evento.id}`);
   }
 
-  getRolEnEvento = memoize((data, uid) => {
-    if (data == undefined || uid == undefined) return undefined;
-    let rol = (data.roles || {})[uid];
+  onTituloClick = () => {
+
+  }
+
+  getRolEnEvento = memoize((data, usuario) => {
+    if (data == undefined || usuario == undefined) return undefined;
+    let rol = (data.roles || {})[usuario.email];
     if (rol == undefined) return undefined;
     if (rol == 1) return 'Operador';
     if (rol == 2) return 'Supervisor';
@@ -94,9 +100,8 @@ class Gestion extends React.Component {
     return (
       <MiPagina
         cargando={eventosCargando || false}
-        toolbarSubtitulo={"Gestion de eventos"}
-        toolbarLeftIconVisible={true}
-        toolbarLeftIconClick={this.onBotonBackClick}
+        toolbarLeftIconVisible={false}
+        onToolbarTituloClick={this.onTituloClick}
       >
         {eventosReady && (
 
@@ -112,7 +117,7 @@ class Gestion extends React.Component {
             {eventos && eventos.length != 0 &&
               eventos.map((evento, index) => {
 
-                const rol = this.getRolEnEvento(evento, usuario.uid);
+                const rol = this.getRolEnEvento(evento, usuario);
 
                 return (
                   <Card

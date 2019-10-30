@@ -4,8 +4,6 @@ import React from "react";
 import styles from "./styles";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
-import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import themeData from "../../theme";
 
 //REDUX
 import { connect } from "react-redux";
@@ -130,10 +128,13 @@ class GestionSorteo extends React.Component {
       if (this.props.eventos == undefined) {
         this.props.setEventosGestionInit();
 
+        const email = this.props.usuario.email;
+        var path = new window.firebase.firestore.FieldPath('roles', email);
+
         const db = window.firebase.firestore();
         let data = await db
           .collection("eventos")
-          .where("roles." + this.props.usuario.uid, ">=", 2)
+          .where(path, ">=", 2)
           .get();
 
         let eventos = data.docs.map(x => x.data());
@@ -147,7 +148,7 @@ class GestionSorteo extends React.Component {
           mensaje: "No tiene el permiso necesario para realizar esta operación",
           onBotonSiClick: () => {
             setTimeout(() => {
-              this.props.redirect("/Gestion");
+              this.onBotonBackClick();
             }, 300);
           }
         });
@@ -160,7 +161,7 @@ class GestionSorteo extends React.Component {
         .collection("info")
         .doc("inscripciones")
         .collection("porUsuario")
-        .where(idEvento + ".inscripto", "==", true)
+        .where(`eventos.${idEvento}.inscripto`, "==", true)
         .get();
 
       let data = docs.docs.map(x => {
@@ -169,13 +170,18 @@ class GestionSorteo extends React.Component {
 
       let participantes = [];
 
-      data.forEach(x => {
-        let cantidad = _.filter(Object.keys(x[idEvento]), x => {
-          return x != "inscripto";
+      data.forEach(infoEvento => {
+        let actividades = (((infoEvento.eventos || {})[idEvento] || {}).actividades || {});
+        actividades = Object.keys(actividades).map((act) => {
+          return actividades[act];
+        });
+
+        let cantidad = _.filter(actividades, act => {
+          return act.inscripto == true;
         }).length;
 
         participantes.push({
-          ...x.usuario,
+          ...infoEvento.usuario,
           cantidad
         });
       });
@@ -353,8 +359,12 @@ class GestionSorteo extends React.Component {
   };
 
   onBotonBackClick = () => {
-    this.props.redirect("/Gestion/Panel/" + this.state.idEvento);
+    this.props.redirect(`/Gestion/Panel/${this.state.idEvento}`);
   };
+
+  onTituloClick = () => {
+    this.props.redirect('/Gestion/');
+  }
 
   getEvento = memoize((eventos, idEvento) => {
     return _.find(eventos, x => x.id == idEvento);
@@ -380,8 +390,6 @@ class GestionSorteo extends React.Component {
       }
     });
 
-    console.log(listaFinal);
-
     return listaFinal;
   });
 
@@ -392,23 +400,6 @@ class GestionSorteo extends React.Component {
     return ganadores[idEvento] || [];
   });
 
-  getTheme = memoize(color => {
-    if (color == undefined) return createMuiTheme(themeData);
-    return createMuiTheme({
-      ...themeData,
-      palette: {
-        ...themeData.palette,
-        primary: {
-          ...themeData.palette.main,
-          main: color
-        },
-        secondary: {
-          ...themeData.palette.secondary,
-          main: color
-        }
-      }
-    });
-  });
 
   //Dialogo mensaje
   mostrarDialogoMensaje = comando => {
@@ -472,200 +463,196 @@ class GestionSorteo extends React.Component {
       }
     }
 
-    const color = evento && evento.color;
-    let theme = this.getTheme(color);
 
     return (
-      <MuiThemeProvider theme={theme}>
-        <MiPagina
-          cargando={paginaCargando || false}
-          toolbarTitulo="Sorteo"
-          toolbarLeftIconVisible={true}
-          toolbarLeftIconClick={this.onBotonBackClick}
-        >
-          {evento && (
-            <React.Fragment>
-              <Header evento={evento} />
+      <MiPagina
+        cargando={paginaCargando || false}
+        toolbarLeftIconVisible={true}
+        onToolbarLeftIconClick={this.onBotonBackClick}
+        onToolbarTituloClick={this.onTituloClick}
+      >
+        {evento && (
+          <React.Fragment>
+            <Header evento={evento} />
 
-              {listaParticipantes && listaParticipantes.length != 0 && (
-                <React.Fragment>
-                  <div
-                    style={{
-                      marginBottom: 16,
-                      width: "100%",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center"
-                    }}
-                  >
-                    <Fab variant="extended" color="primary" onClick={this.onSorteoClick}>
-                      Sortear
+            {listaParticipantes && listaParticipantes.length != 0 && (
+              <React.Fragment>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center"
+                  }}
+                >
+                  <Fab variant="extended" color="primary" onClick={this.onSorteoClick}>
+                    Sortear
                     </Fab>
-                  </div>
-                </React.Fragment>
-              )}
+                </div>
+              </React.Fragment>
+            )}
 
-              {/* Ganadores */}
-              {listaGanadores.length != 0 && (
-                <Card style={{ borderRadius: 16, marginBottom: 32 }}>
-                  <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
-                    Ganadores
+            {/* Ganadores */}
+            {listaGanadores.length != 0 && (
+              <Card style={{ borderRadius: 16, marginBottom: 32 }}>
+                <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
+                  Ganadores
                   </Typography>
-                  <List>
-                    {listaGanadores.map((ganador, index) => {
-                      return (
-                        <ListItem
-                          button
-                          key={index}
-                          onClick={() => {
-                            this.onGanadorClick(ganador);
-                          }}
-                        >
-                          <ListItemAvatar>
-                            <Avatar src={ganador.photoURL}></Avatar>
-                          </ListItemAvatar>
-                          <ListItemText>{ganador.nombre}</ListItemText>
-                        </ListItem>
-                      );
-                    })}
-                  </List>
-                </Card>
-              )}
-
-              {/* Ausentes */}
-              {ausentes.length != 0 && (
-                <Card style={{ borderRadius: 16, marginBottom: 32 }}>
-                  <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
-                    Ausentes
-                  </Typography>
-                  <List>
-                    {ausentes.map((ganador, index) => {
-                      return (
-                        <ListItem
-                          button
-                          key={index}
-                          onClick={() => {
-                            this.onAusenteClick(ganador);
-                          }}
-                        >
-                          <ListItemAvatar>
-                            <Avatar src={ganador.photoURL}></Avatar>
-                          </ListItemAvatar>
-                          <ListItemText>{ganador.nombre}</ListItemText>
-                        </ListItem>
-                      );
-                    })}
-                  </List>
-                </Card>
-              )}
-
-              {/* Participantes */}
-              {listaParticipantes && listaParticipantes.length != 0 && (
-                <Card style={{ borderRadius: 16 }}>
-                  <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
-                    Participantes
-                  </Typography>
-                  <List>
-                    {listaParticipantes.map((x, key) => {
-                      return (
-                        <ListItem button key={key}>
-                          <ListItemAvatar>
-                            <Avatar src={x.photoURL}></Avatar>
-                          </ListItemAvatar>
-                          <ListItemText>{x.nombre}</ListItemText>
-                        </ListItem>
-                      );
-                    })}
-                  </List>
-                </Card>
-              )}
-
-              <Footer evento={evento} />
-            </React.Fragment>
-          )}
-
-          <Dialog fullWidth open={this.state.dialogoSorteoVisible || false}>
-            <DialogContent>
-              {this.state.dialogoSorteoCargandoVisible == true && (
-                <React.Fragment>
-                  <Lottie options={lottieCargando} height={130} width={130} style={{ minHeight: "130px" }} />
-                  <Typography variant="h6" style={{ textAlign: "center", marginTop: 16 }}>
-                    Sorteando...
-                  </Typography>
-                </React.Fragment>
-              )}
-
-              {this.state.dialogoSorteoGanadorVisible == true && (
-                <React.Fragment>
-                  <Lottie options={lottieGanador} height={180} width={180} style={{ minHeight: "180px" }} />
-                  <div
-                    style={{
-                      border: "1px solid rgba(0,0,0,0.1)",
-                      borderRadius: 16,
-                      display: "flex",
-                      padding: 16,
-                      marginTop: 32,
-                      marginBottom: 32,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexDirection: "column"
-                    }}
-                  >
-                    <Avatar
-                      style={{ marginBottom: 16, width: 72, height: 72 }}
-                      src={this.state.dialogoSorteoGanadorData && this.state.dialogoSorteoGanadorData.photoURL}
-                    />
-                    <Typography style={{ textAlign: "center" }} variant="h5">
-                      {this.state.dialogoSorteoGanadorData && this.state.dialogoSorteoGanadorData.nombre}
-                    </Typography>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexDirection: "column"
-                    }}
-                  >
-                    <Typography>¿Está presente?</Typography>
-                    <div style={{ marginTop: 16 }}>
-                      <Button size="small" onClick={this.onBotonNoPresenteClick}>
-                        No
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
+                <List>
+                  {listaGanadores.map((ganador, index) => {
+                    return (
+                      <ListItem
+                        button
+                        key={index}
                         onClick={() => {
-                          this.setState({ dialogoSorteoVisible: false });
+                          this.onGanadorClick(ganador);
                         }}
                       >
-                        Si
-                      </Button>
-                    </div>
-                  </div>
-                </React.Fragment>
-              )}
-            </DialogContent>
-          </Dialog>
+                        <ListItemAvatar>
+                          <Avatar src={ganador.photoURL}></Avatar>
+                        </ListItemAvatar>
+                        <ListItemText>{ganador.nombre}</ListItemText>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </Card>
+            )}
 
-          {/* Dialogo mensaje */}
-          <DialogoMensaje
-            visible={this.state.dialogoMensajeVisible || false}
-            titulo={this.state.dialogoMensajeTitulo || ""}
-            mensaje={this.state.dialogoMensajeMensaje || ""}
-            onClose={this.onDialogoMensajeClose}
-            botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
-            textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
-            onBotonSiClick={this.onDialogoMensajeBotonSiClick}
-            autoCerrarBotonSi={false}
-            botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
-            textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
-            onBotonNoClick={this.onDialogoMensajeBotonNoClick}
-            autoCerrarBotonNo={false}
-          />
-        </MiPagina>
-      </MuiThemeProvider>
+            {/* Ausentes */}
+            {ausentes.length != 0 && (
+              <Card style={{ borderRadius: 16, marginBottom: 32 }}>
+                <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
+                  Ausentes
+                  </Typography>
+                <List>
+                  {ausentes.map((ganador, index) => {
+                    return (
+                      <ListItem
+                        button
+                        key={index}
+                        onClick={() => {
+                          this.onAusenteClick(ganador);
+                        }}
+                      >
+                        <ListItemAvatar>
+                          <Avatar src={ganador.photoURL}></Avatar>
+                        </ListItemAvatar>
+                        <ListItemText>{ganador.nombre}</ListItemText>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </Card>
+            )}
+
+            {/* Participantes */}
+            {listaParticipantes && listaParticipantes.length != 0 && (
+              <Card style={{ borderRadius: 16 }}>
+                <Typography variant="subtitle2" style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16 }}>
+                  Participantes
+                  </Typography>
+                <List>
+                  {listaParticipantes.map((x, key) => {
+                    return (
+                      <ListItem button key={key}>
+                        <ListItemAvatar>
+                          <Avatar src={x.photoURL}></Avatar>
+                        </ListItemAvatar>
+                        <ListItemText>{x.nombre}</ListItemText>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </Card>
+            )}
+
+            <Footer evento={evento} />
+          </React.Fragment>
+        )}
+
+        <Dialog fullWidth open={this.state.dialogoSorteoVisible || false}>
+          <DialogContent>
+            {this.state.dialogoSorteoCargandoVisible == true && (
+              <React.Fragment>
+                <Lottie options={lottieCargando} height={130} width={130} style={{ minHeight: "130px" }} />
+                <Typography variant="h6" style={{ textAlign: "center", marginTop: 16 }}>
+                  Sorteando...
+                  </Typography>
+              </React.Fragment>
+            )}
+
+            {this.state.dialogoSorteoGanadorVisible == true && (
+              <React.Fragment>
+                <Lottie options={lottieGanador} height={180} width={180} style={{ minHeight: "180px" }} />
+                <div
+                  style={{
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    borderRadius: 16,
+                    display: "flex",
+                    padding: 16,
+                    marginTop: 32,
+                    marginBottom: 32,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "column"
+                  }}
+                >
+                  <Avatar
+                    style={{ marginBottom: 16, width: 72, height: 72 }}
+                    src={this.state.dialogoSorteoGanadorData && this.state.dialogoSorteoGanadorData.photoURL}
+                  />
+                  <Typography style={{ textAlign: "center" }} variant="h5">
+                    {this.state.dialogoSorteoGanadorData && this.state.dialogoSorteoGanadorData.nombre}
+                  </Typography>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "column"
+                  }}
+                >
+                  <Typography>¿Está presente?</Typography>
+                  <div style={{ marginTop: 16 }}>
+                    <Button size="small" onClick={this.onBotonNoPresenteClick}>
+                      No
+                      </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        this.setState({ dialogoSorteoVisible: false });
+                      }}
+                    >
+                      Si
+                      </Button>
+                  </div>
+                </div>
+              </React.Fragment>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialogo mensaje */}
+        <DialogoMensaje
+          visible={this.state.dialogoMensajeVisible || false}
+          titulo={this.state.dialogoMensajeTitulo || ""}
+          mensaje={this.state.dialogoMensajeMensaje || ""}
+          onClose={this.onDialogoMensajeClose}
+          botonSiVisible={this.state.dialogoMensajeBotonSiVisible || false}
+          textoSi={this.state.dialogoMensajeBotonSiMensaje || ""}
+          onBotonSiClick={this.onDialogoMensajeBotonSiClick}
+          autoCerrarBotonSi={false}
+          botonNoVisible={this.state.dialogoMensajeBotonNoVisible || false}
+          textoNo={this.state.dialogoMensajeBotonNoMensaje || ""}
+          onBotonNoClick={this.onDialogoMensajeBotonNoClick}
+          autoCerrarBotonNo={false}
+        />
+      </MiPagina>
     );
   }
 }

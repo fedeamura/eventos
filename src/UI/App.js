@@ -8,16 +8,12 @@ import "react-virtualized/styles.css";
 
 //Router
 import { withRouter } from "react-router-dom";
-import { Route } from "react-router-dom";
+import { Route, Redirect } from "react-router-dom";
 import { AnimatedSwitch } from "react-router-transition";
 
 //REDUX
 import { connect } from "react-redux";
-import { login, cerrarSesion, setInscripciones } from "@Redux/Actions/usuario";
-import { setEventos, setInit as setEventosInit } from "@Redux/Actions/eventos";
-
-//Componentes
-import _ from "lodash";
+import { login, cerrarSesion } from "@Redux/Actions/usuario";
 
 //Mis componentes
 import PanelLogin from "@UI/_PanelLogin";
@@ -26,8 +22,9 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 
 //Rules
 import Rules_Evento from "../Rules/Rules_Evento";
+import Rules_Data from '../Rules/Rules_Data';
+import { Typography } from "../../node_modules/@material-ui/core";
 
-const Inicio = asyncComponent(() => import("@UI/Inicio"));
 const Inscripcion = asyncComponent(() => import("@UI/Inscripcion"));
 const Evento = asyncComponent(() => import("@UI/Evento"));
 const Actividad = asyncComponent(() => import("@UI/Actividad"));
@@ -38,6 +35,10 @@ const GestionSorteo = asyncComponent(() => import("@UI/GestionSorteo"));
 const GestionInscriptos = asyncComponent(() => import("@UI/GestionInscriptos"));
 const GestionMensajes = asyncComponent(() => import("@UI/GestionMensajes"));
 const Pagina404 = asyncComponent(() => import("@UI/_Pagina404"));
+
+const ERROR_CRITICO_URL = 'ERROR_CRITICO_URL';
+const ERROR_CRITICO_EVENTO_NO_EXISTE = 'ERROR_CRITICO_EVENTO_NO_EXISTE';
+const ERROR_CRITICO_ERROR_LEYENDO = 'ERROR_CRITICO_ERROR_LEYENDO';
 
 //Redux
 const mapStateToProps = state => {
@@ -52,15 +53,6 @@ const mapDispatchToProps = dispatch => ({
   },
   cerrarSesion: () => {
     dispatch(cerrarSesion());
-  },
-  setInscripciones: data => {
-    dispatch(setInscripciones(data));
-  },
-  setEventos: data => {
-    dispatch(setEventos(data));
-  },
-  setEventosInit: () => {
-    dispatch(setEventosInit());
   }
 });
 
@@ -69,8 +61,9 @@ class App extends React.Component {
     super(props);
 
     this.state = {
+      errorCritico: undefined,
       cargandoUsuario: true,
-      cargandoInscripciones: true
+      cargandoData: false,
     };
   }
 
@@ -86,7 +79,6 @@ class App extends React.Component {
     }
 
     this.unsubscribeFirebaseAuth = window.firebase.auth().onAuthStateChanged(user => {
-      this.setState({ cargandoInscripciones: false });
       if (user) {
         this.props.login(this.convertirFirebaseUser(user));
         this.onLogin();
@@ -99,66 +91,58 @@ class App extends React.Component {
     });
   }
 
+
   componentWillUnmount() {
-    this.unsubscribeFirebaseAuth && this.unsubscribeFirebaseAuth();
-    Rules_Evento.dejarDeEscucharGanadores();
-    Rules_Evento.dejarDeEscucharMensajes();
+    Rules_Data.dejarDeEscuchar();
+  }
+
+  componentDidUpdate() {
   }
 
   onLogin = async () => {
-    const db = window.firebase.firestore();
-    const { usuario } = this.props;
-
-    this.props.setEventosInit();
-    let dataEventos = await db.collection("eventos").get();
-    let eventos = dataEventos.docs.map(x => x.data());
-
-    this.listenerInscripciones && this.listenerInscripciones();
-    this.listenerInscripciones = db
-      .collection("info")
-      .doc("inscripciones")
-      .collection("porUsuario")
-      .doc(usuario.uid)
-      .onSnapshot(
-        data => {
-          let info = data.data() || {};
-          let inscripciones = {};
-          Object.keys(info).forEach(a => {
-            if (a != "usuario" && a != "fecha") {
-              inscripciones[a] = [];
-
-              Object.keys(info[a]).forEach(b => {
-                if (b != "inscripto") {
-                  inscripciones[a].push(b);
-                }
-              });
-            }
-          });
-
-          this.props.setInscripciones(inscripciones);
-          const eventosInscriptos = Object.keys(inscripciones);
-
-          let infoFinal = [];
-          eventos.forEach(evento => {
-            if (eventosInscriptos.indexOf(evento.id) != -1) {
-              infoFinal.push(evento);
-            }
-          });
-
-          this.props.setEventos(infoFinal);
-          this.setState({ cargandoInscripciones: false });
-        },
-        () => {
-          this.props.setInscripciones({});
-          this.props.setEventos([]);
-          this.setState({ cargandoInscripciones: false });
-        }
-      );
+    this.escucharDatos();
   };
 
   onLogout = () => {
-    this.listenerInscripciones && this.listenerInscripciones();
+    Rules_Data.dejarDeEscuchar();
   };
+
+
+  escucharDatos = () => {
+    const { usuario } = this.props;
+
+    this.setState({ cargandoData: true, errorCritico: undefined });
+
+    const url = window.location.href;
+    if (url.toLowerCase().indexOf('/gestion') != -1) {
+      this.setState({ modoGestion: true, modoScan: false, cargandoData: false });
+      return;
+    }
+
+    if (url.toLowerCase().indexOf('/scanqr') != -1) {
+      this.setState({ modoGestion: false, modoScan: true, cargandoData: false });
+      return;
+    }
+
+    const partesUrl = url.split('/');
+    // console.log('Partes url', url);
+    if (partesUrl < 4) {
+      Rules_Data.dejarDeEscuchar();
+      this.setState({ errorCritico: ERROR_CRITICO_URL, cargandoData: false });
+      return;
+    }
+
+    const idEvento = partesUrl[3];
+    // console.log('Id evento', idEvento);
+    this.setState({ idEvento: idEvento });
+    Rules_Data.escuchar(idEvento, usuario.uid, () => {
+      // console.log('Data ready');
+      this.setState({ cargandoData: false });
+    }, (error) => {
+      Rules_Data.dejarDeEscuchar();
+      this.setState({ errorCritico: error, cargandoData: false })
+    })
+  }
 
   convertirFirebaseUser = user => {
     return {
@@ -171,10 +155,14 @@ class App extends React.Component {
   };
 
   render() {
-    const { cargandoUsuario, cargandoInscripciones } = this.state;
+    const { cargandoUsuario, cargandoData, errorCritico } = this.state;
     const { classes, usuario } = this.props;
 
-    const cargando = cargandoUsuario == true || cargandoInscripciones == true;
+    const cargando = cargandoUsuario == true || cargandoData == true;
+
+    if (errorCritico != undefined) {
+      return <div />;
+    }
 
     return (
       <div className={classes.root}>
@@ -205,30 +193,46 @@ class App extends React.Component {
 
   renderContent() {
     const { classes } = this.props;
-    let base = "";
+    const { idEvento, modoGestion, modoScan } = this.state;
+
     return (
       <main className={classes.content}>
         <AnimatedSwitch atEnter={{ opacity: 0 }} atLeave={{ opacity: 0 }} atActive={{ opacity: 1 }} className={"switch-wrapper"}>
-          <Route exact path={`${base}/`} component={Inicio} />
 
-          <Route exact path={`${base}/Inscripcion/:codigo`} component={Inscripcion} />
-
-          <Route exact path={`${base}/ScanQR`} component={ScanQR} />
-
-          <Route exact path={`${base}/Evento/:id`} component={Evento} />
-
-          <Route exact path={`${base}/Actividad/:idEvento/:idActividad`} component={Actividad} />
 
           {/* Gestion */}
-          <Route exact path={`${base}/Gestion`} component={Gestion} />
+          {modoGestion == true && (
+            <React.Fragment>
 
-          <Route exact path={`${base}/Gestion/Panel/:idEvento`} component={GestionPanel} />
+              <Route exact path={`/Gestion`} component={modoGestion == true ? Gestion : null} />
 
-          <Route exact path={`${base}/Gestion/Sorteo/:idEvento`} component={GestionSorteo} />
+              <Route exact path={`/Gestion/Panel/:idEvento`} component={modoGestion == true ? GestionPanel : null} />
 
-          <Route exact path={`${base}/Gestion/Inscriptos/:idEvento`} component={GestionInscriptos} />
+              <Route exact path={`/Gestion/Sorteo/:idEvento`} component={modoGestion == true ? GestionSorteo : null} />
 
-          <Route exact path={`${base}/Gestion/Mensajes/:idEvento`} component={GestionMensajes} />
+              <Route exact path={`/Gestion/Inscriptos/:idEvento`} component={modoGestion == true ? GestionInscriptos : null} />
+
+              <Route exact path={`/Gestion/Mensajes/:idEvento`} component={modoGestion == true ? GestionMensajes : null} />
+            </React.Fragment>
+          )}
+
+
+          {idEvento && (
+            <React.Fragment>
+
+              <Route exact path={`/${idEvento}/ScanQR`} component={ScanQR} />
+
+              {/* Evento */}
+              <Route exact path={`/${idEvento}`} component={Evento} />
+
+              {/* Actividad */}
+              <Route exact path={`/${idEvento}/Data/:idActividad`} component={Actividad} />
+
+              {/* Inscripcion */}
+              <Route exact path={`/${idEvento}/Inscripcion/:idActividad`} component={Inscripcion} />
+
+            </React.Fragment>
+          )}
 
           <Route component={Pagina404} />
         </AnimatedSwitch>

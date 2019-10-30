@@ -2,7 +2,7 @@ import React from "react";
 
 //Styles
 import classNames from "classnames";
-import { withStyles } from "@material-ui/core/styles";
+import { withStyles, withTheme } from "@material-ui/core/styles";
 import withWidth, { isWidthUp } from "@material-ui/core/withWidth";
 import styles from "./styles";
 
@@ -20,6 +20,11 @@ import IconArrowBackOutlined from "@material-ui/icons/ArrowBackOutlined";
 //Mis componentes
 import MiPagina from "@Componentes/MiPagina";
 import MiContent from "@Componentes/MiContent";
+
+//Icons
+import MdiIcon from "@mdi/react";
+import { mdiCheckboxMarkedCircle } from '@mdi/js';
+import { Typography, IconButton } from "../../../node_modules/@material-ui/core";
 
 const mapStateToProps = state => {
   return {
@@ -44,8 +49,22 @@ class _MiPagina extends React.PureComponent {
     super(props);
   }
 
+  onToolbarLeftIconClick = () => {
+    const { onToolbarLeftIconClick } = this.props;
+    if (onToolbarLeftIconClick) {
+      onToolbarLeftIconClick();
+    } else {
+      this.props.goBack();
+    }
+  }
+
   onToolbarTituloClick = () => {
-    this.props.redirigir("/");
+    const { onToolbarTituloClick } = this.props;
+    if (onToolbarTituloClick) {
+      onToolbarTituloClick();
+    } else {
+      this.props.redirigir("/");
+    }
   };
 
   onCerrarSesionClick = () => {
@@ -55,7 +74,7 @@ class _MiPagina extends React.PureComponent {
       .then(() => {
         this.props.cerrarSesion();
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   onBreadcrumbClick = url => {
@@ -65,27 +84,17 @@ class _MiPagina extends React.PureComponent {
   render() {
     const { classes } = this.props;
 
-    let toolbarLeftIconVisible = this.props.toolbarLeftIconVisible !== false;
-    let toolbarLeftIcon = undefined;
-    if (toolbarLeftIconVisible === true) {
-      toolbarLeftIcon = this.props.toolbarLeftIcon || <IconArrowBackOutlined style={{ fontSize: 16 }} />;
-    }
 
     return (
       <React.Fragment>
         <MiPagina
           cargando={this.props.cargando}
           onBreadcrumbClick={this.onBreadcrumbClick}
-          toolbarTitulo={this.props.toolbarTitulo || window.Config.NOMBRE_SISTEMA}
-          toolbarSubtitulo={this.props.toolbarSubtitulo || ""}
           toolbarBreadcrumbs={this.props.toolbarBreadcrumbs || []}
           breadcrumbs={this.props.breadcrumbs || []}
           toolbarClassName={classes.toolbar}
-          toolbarLeftIcon={toolbarLeftIcon}
-          toolbarLeftIconClick={this.props.toolbarLeftIconClick || this.props.goBack}
-          toolbarLeftIconVisible={this.props.toolbarLeftIconVisible}
-          toolbarChildren={this.props.toolbarChildren}
-          onToolbarTituloClick={this.props.onToolbarTituloClick || this.onToolbarTituloClick}
+          toolbarLeftIconRender={this.renderLeftIcon()}
+          toolbarChildren={this.renderChildren()}
           onToolbarCerrarSesionClick={this.onCerrarSesionClick}
           contentClassName={classNames(classes.paginaContent, this.props.contentClassName)}
         >
@@ -100,6 +109,50 @@ class _MiPagina extends React.PureComponent {
       </React.Fragment>
     );
   }
+
+  renderLeftIcon = () => {
+    const { toolbarLeftIcon, toolbarLeftIconVisible } = this.props;
+
+    if (toolbarLeftIconVisible == true) {
+      let icon = toolbarLeftIcon || <IconArrowBackOutlined style={{ fontSize: 16 }} />;
+      return (
+        <IconButton onClick={this.onToolbarLeftIconClick}>
+          {icon}
+        </IconButton>
+      );
+    } else {
+      return (
+        <IconButton style={{ opacity: 0, pointerEvents: 'none' }}>
+          <IconArrowBackOutlined style={{ fontSize: 16 }} />
+        </IconButton>
+      );
+    }
+  }
+
+  renderChildren = () => {
+    const { toolbarChildren, classes, theme } = this.props;
+    return (
+      <div
+        className={classes.children}
+        onClick={this.onToolbarTituloClick}
+      >
+        <MdiIcon
+          className={"icono"}
+          path={mdiCheckboxMarkedCircle} title="Logo" size={1} color={theme.palette.primary.main} />
+
+        <Typography
+          variant="h6"
+          color="inherit"
+          className={"titulo"}
+          noWrap
+        >
+          {window.Config.NOMBRE_SISTEMA}
+        </Typography>
+
+        {toolbarChildren}
+      </div>
+    );
+  }
 }
 
 let componente = _MiPagina;
@@ -108,6 +161,7 @@ componente = connect(
   mapDispatchToProps
 )(componente);
 componente = withStyles(styles)(componente);
+componente = withTheme(componente);
 componente = withWidth()(componente);
 componente = withRouter(componente);
 export default componente;

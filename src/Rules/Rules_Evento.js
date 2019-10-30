@@ -5,7 +5,7 @@ const metodos = {
     escucharGanadores: (id) => {
         if (this.listenerGanadores && this.listenerGanadores[id]) return;
 
-        console.log('Empiezo a escuchar los ganadores del evento', id);
+        // console.log('Empiezo a escuchar los ganadores del evento', id);
 
         const db = window.firebase.firestore();
         if (this.listenerGanadores == undefined) this.listenerGanadores = {};
@@ -36,7 +36,7 @@ const metodos = {
     escucharMensajes: (id) => {
         if (this.listenerMensajes && this.listenerMensajes[id]) return;
 
-        console.log('Empiezo a escuchar los mensajes del evento', id);
+        // console.log('Empiezo a escuchar los mensajes del evento', id);
 
         const db = window.firebase.firestore();
         if (this.listenerMensajes == undefined) this.listenerMensajes = {};
