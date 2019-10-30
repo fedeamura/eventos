@@ -88,7 +88,7 @@ const metodos = {
                                                             const infoGanadores = dataGanadores.data();
                                                             let inforGanadoresData = infoGanadores.ganadores || {};
                                                             ganadores = Object.keys(inforGanadoresData).map((x) => {
-                                                                return ganadores[x];
+                                                                return inforGanadoresData[x];
                                                             });
                                                         }
 

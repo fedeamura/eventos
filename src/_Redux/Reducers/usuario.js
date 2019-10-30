@@ -24,9 +24,6 @@ const reducer = (state = initialState, action) => {
       return { ...state, inscripciones: action.payload };
     }
 
-
-
-
     default:
       return state;
   }

@@ -100,6 +100,8 @@ class Evento extends React.Component {
 
   esGanador = memoize((ganadores, uid) => {
     if (ganadores == undefined || uid == undefined) return false;
+    console.log(ganadores);
+
     return _.find(ganadores, x => x.uid == uid) != undefined;
   });
 
