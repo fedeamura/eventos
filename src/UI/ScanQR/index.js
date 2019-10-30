@@ -25,7 +25,8 @@ import { CircularProgress } from "../../../node_modules/@material-ui/core";
 
 const mapStateToProps = state => {
   return {
-    usuario: state.Usuario.usuario
+    usuario: state.Usuario.usuario,
+    evento: state.Evento.data
   };
 };
 
@@ -86,16 +87,8 @@ class ScanQR extends React.Component {
             if (result != false) {
               clearInterval(this.intervalo);
               let data = result.data;
-
-              let codigo;
-              let partes = data.split("/");
-              if (partes.length != 1) {
-                codigo = partes[partes.length - 1];
-              } else {
-                codigo = data;
-              }
-
-              this.props.redirect("/Inscripcion/" + codigo);
+              let partes = data.split("/").slice(-3);
+              window.location.href = `/${partes[0]}/Inscripcion/${partes[2]}`;
             }
           }
         } catch (ex) { }

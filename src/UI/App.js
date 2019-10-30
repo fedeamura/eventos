@@ -119,11 +119,6 @@ class App extends React.Component {
       return;
     }
 
-    if (url.toLowerCase().indexOf('/scanqr') != -1) {
-      this.setState({ modoGestion: false, modoScan: true, cargandoData: false });
-      return;
-    }
-
     const partesUrl = url.split('/');
     // console.log('Partes url', url);
     if (partesUrl < 4) {
